@@ -1284,7 +1284,7 @@ dash.calc('t_cand_cls', {
     dash.draw(k + '-times-b', (el) => { const r = top(); el.textContent = r && r.times === 1 ? '成績がある生徒' : '2回分そろった生徒'; });
     dash.draw(k + '-top-ref', (el) => {
       const r = top();
-      el.textContent = r && r.times >= 2 ? `このほか、1回分しかなく、その1回で基準を下回った生徒（参考）が ${d3.format(',')(r.ref)}人います。` : '';
+      el.textContent = r && r.times >= 2 ? `このほか、1回分しかない生徒が ${d3.format(',')(r.one)}名で、そのうち基準を下回った生徒（参考）が ${d3.format(',')(r.ref)}名います。` : '';
     });
 
     dash.draw(k + '-cls-pick', (sel) => {
@@ -1310,7 +1310,7 @@ dash.calc('t_cand_cls', {
         const sub = document.createElement('span'); sub.className = 'rk-sub'; sub.textContent = r.subject;
         const num = document.createElement('span'); num.className = 'rk-num';
         const b = document.createElement('b'); b.textContent = d3.format(',')(r.cand);
-        const u = document.createElement('small'); u.textContent = `人（${pct(r.cand_pct)}%）` + (r.times >= 2 ? `／参考 ${d3.format(',')(r.ref)}人` : '');
+        const u = document.createElement('small'); u.textContent = `人（${pct(r.cand_pct)}%）` + (r.times >= 2 ? `／1回のみ ${d3.format(',')(r.one)}名・うち参考 ${d3.format(',')(r.ref)}名` : '');
         num.append(b, u);
         const people = document.createElement('div'); people.className = 'rk-people';
         const pf = document.createElement('i'); pf.style.width = (r.cand / max) * 100 + '%'; people.appendChild(pf);
