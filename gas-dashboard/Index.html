@@ -325,7 +325,7 @@ body { font-family: var(--font-anthropic-sans); }
         </table>
       </div>
     </div>
-    <p class="muted">元データ：Googleスプレッドシート「定期テスト」。生徒ごと・教科ごとに、点数がある直近2回のテストで判定します（学年で一律には決めません）。空白のセルは0点にせず、その前のテストまでさかのぼります。さかのぼるのは最新のテストから1年半前までです。中1は直近1回で判定します。「人数」は2回分そろった生徒の数です。</p>
+    <p class="muted">元データ：Googleスプレッドシート「定期テスト」。生徒ごと・教科ごとに、点数がある直近2回のテストで判定します（学年で一律には決めません）。空白のセルは0点にせず、その前のテストまでさかのぼります。さかのぼるのは最新のテストから1年半前までです。「人数」は2回分そろった生徒の数です。</p>
     </div>
   </section>
 </div>
@@ -781,12 +781,13 @@ dash.calc('t_class', {
 /*
  * 科目追加候補：生徒ごと・教科ごとに「成績がある直近2回」を使う（学年で一律に決めない）。
  * - さかのぼるのは、その学年の最新の成績から1年半（18か月）前まで。
- * - 中1は1回（直近）で判断する。ほかの学年でも、学年全体で成績が1回分しかないときは1回で判断する。
+ * - 通知表の中1は1回（直近）で判断する。定期テストの中1は2回で判断する。
+ * - 学年全体で成績が1回分しかないときは1回で判断する。
  * - 2回必要なのに1回しかない生徒は候補に入れず、「1回だけで基準を下回った生徒（参考）」として別に数える。
  * - 空白は0点にしない（データなしとして飛ばす）。
  */
 const LOOKBACK_MONTHS = 18;
-function perStudentCand(rows, lines, isLow) {
+function perStudentCand(rows, lines, isLow, g1One) {
   const five = ['国語', '社会', '数学', '理科', '英語'];
   const now = new Map(), latestTerm = new Map();
   for (const r of rows) {
@@ -802,8 +803,8 @@ function perStudentCand(rows, lines, isLow) {
     if (!tset.has(r.grade)) tset.set(r.grade, new Set());
     tset.get(r.grade).add(r.term_no);
   }
-  // 中1は直近2回がそろわないので、1回で判断する。
-  const need = (g) => (g === '中1' ? 1 : Math.min(2, (tset.get(g) || new Set()).size));
+  // g1One：通知表の中1は直近2回がそろわないので、1回で判断する。
+  const need = (g) => (g1One && g === '中1' ? 1 : Math.min(2, (tset.get(g) || new Set()).size));
   const st = new Map();
   for (const r of rows) {
     if (!five.includes(r.subject) || r.mon < from(r.grade)) continue;
@@ -853,7 +854,7 @@ function perStudentCand(rows, lines, isLow) {
 
 dash.calc('cand', {
   inputs: ['g1', 'g2', 'g3'],
-  fn: (g1, g2, g3) => perStudentCand([...g1, ...g2, ...g3], [0], (v) => v <= 3),
+  fn: (g1, g2, g3) => perStudentCand([...g1, ...g2, ...g3], [0], (v) => v <= 3, true),
 });
 
 dash.calc('cand_cls', {
@@ -875,7 +876,7 @@ dash.calc('cand_cls', {
 
 dash.calc('t_cand', {
   inputs: ['t1', 't2', 't3'],
-  fn: (t1, t2, t3) => perStudentCand([...t1, ...t2, ...t3], [60, 70, 80], (v, line) => v < line),
+  fn: (t1, t2, t3) => perStudentCand([...t1, ...t2, ...t3], [60, 70, 80], (v, line) => v < line, false),
 });
 
 dash.calc('t_cand_cls', {
