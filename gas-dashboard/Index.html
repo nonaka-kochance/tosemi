@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>通知表・定期テスト分析</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root {
+  --color-fg: #1f2328; --color-fg-muted: #656d76; --color-bg: #f6f7f9; --color-panel: #ffffff;
+  --color-border-line: #d8dce1; --color-ok: #1a7f37; --color-warn: #9a6700; --color-bad: #cf222e;
+  --font-anthropic-sans: "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, "Noto Sans JP", system-ui, sans-serif;
+  --font-anthropic-serif: "Hiragino Mincho ProN", "Noto Serif JP", Georgia, serif;
+  --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 20px;
+  --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 16px; --cds-pad-xl: 28px;
+  --cds-font-size-title: 26px; --cds-font-size-heading: 16px; --cds-font-size-body: 14px; --cds-font-size-caption: 12px;
+  --cds-font-weight-medium: 600; --cds-radius: 6px; --cds-dur-slow: .25s;
+  --cds-surface-popover: #ffffff; --cds-border: #c5cad1; --cds-shadow-popover: 0 4px 14px rgba(0,0,0,.15);
+  --cds-text-secondary: #656d76;
+  --cds-chart-status-critical: #d9534f; --cds-chart-muted: #c9ced6; --cds-chart-grid: #e4e7eb;
+  --cds-chart-reference: #8b949e; --cds-chart-axis: #8b949e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fg: #e6e8ea; --color-fg-muted: #9aa3ad; --color-bg: #15181c; --color-panel: #1e2227;
+    --color-border-line: #343a42; --color-ok: #4ac26b; --color-warn: #d4a72c; --color-bad: #ff7b72;
+    --cds-surface-popover: #272c33; --cds-border: #3d444d; --cds-shadow-popover: 0 4px 14px rgba(0,0,0,.5);
+    --cds-text-secondary: #9aa3ad; --cds-chart-status-critical: #e5726e; --cds-chart-muted: #4a515b;
+    --cds-chart-grid: #2c3238; --cds-chart-reference: #6e7781; --cds-chart-axis: #6e7781;
+  }
+}
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+body { font-family: var(--font-anthropic-sans); }
+#dash-root { max-width: 1100px; margin: 0 auto; padding: 16px; box-sizing: border-box; }
+#gate { max-width: 360px; margin: 18vh auto; padding: 24px; background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: 8px; text-align: center; }
+#gate input { font: inherit; padding: 8px; width: 80%; border: 1px solid var(--color-border-line); border-radius: 6px; background: var(--color-bg); color: var(--color-fg); }
+#gate button { font: inherit; margin-top: 12px; padding: 8px 20px; border: 0; border-radius: 6px; background: var(--color-fg); color: var(--color-bg); cursor: pointer; }
+#banner { margin: 0 0 12px; padding: 10px 14px; border-radius: 6px; font-size: 14px; background: var(--color-panel); border: 1px solid var(--color-border-line); }
+#banner.err { border-color: var(--color-bad); color: var(--color-bad); }
+.dash-skeleton { background: linear-gradient(90deg, transparent, rgba(128,128,128,.12), transparent); background-size: 200% 100%; animation: sk 1.2s linear infinite; }
+@keyframes sk { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+#dash-root .tsx { font-family: var(--font-anthropic-sans); color: var(--color-fg); display: grid; gap: var(--cds-gap-lg); }
+.tsx h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; }
+.tsx h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0 0 var(--cds-gap-xs); }
+.tsx .lead { margin: var(--cds-gap-xs) 0 0; font-size: var(--cds-font-size-body); line-height: 1.7; }
+.tsx .lead b { font-weight: 600; }
+.tsx .muted { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); margin: 0; line-height: 1.6; }
+.tsx .bar { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+.tsx .seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.tsx .seg button { font: inherit; font-size: var(--cds-font-size-body); background: transparent; color: var(--color-fg); border: 0; padding: var(--cds-pad-xs) var(--cds-pad-md); cursor: pointer; }
+.tsx .seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.tsx select { font: inherit; font-size: var(--cds-font-size-body); padding: var(--cds-pad-xs) var(--cds-pad-sm); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-panel); color: var(--color-fg); max-width: 100%; }
+.tsx .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-md); }
+.tsx .card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; }
+.tsx .tile .lab { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); }
+.tsx .tile .big { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; display: block; margin: var(--cds-gap-xs) 0; }
+.tsx .tile .row { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; margin: 0; }
+.tsx .up { color: var(--color-ok); } .tsx .down { color: var(--color-bad); }
+.tsx .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.tsx .chart { position: relative; min-height: 300px; margin-top: var(--cds-gap-sm); }
+.tsx .chart.short { min-height: 260px; }
+.tsx .chart svg { display: block; overflow: visible; }
+.tsx .chart text { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-caption); fill: var(--color-fg-muted); }
+.tsx .chart text.strong { fill: var(--color-fg); }
+.tsx .tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); line-height: 1.6; white-space: nowrap; z-index: 2; }
+.tsx .tip .t { color: var(--cds-text-secondary); }
+.tsx .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.tsx .legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: var(--cds-gap-xs); }
+.tsx .legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.tsx .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.tsx .sw-low { background: var(--cds-chart-status-critical); }
+.tsx .sw-3 { background: var(--cds-chart-muted); }
+.tsx .tbl { max-height: 32rem; overflow: auto; margin-top: var(--cds-gap-sm); }
+.tsx table { border-collapse: collapse; width: 100%; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.tsx th { position: sticky; top: 0; background: var(--color-panel); text-align: right; font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.tsx td { text-align: right; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.tsx th:first-child, .tsx td:first-child { text-align: left; }
+.tsx tbody tr { cursor: pointer; }
+.tsx tbody tr:hover td { background: var(--cds-surface-popover); }
+.tsx tbody tr.total td { font-weight: 600; }
+.tsx tbody tr.sel td { background: var(--cds-surface-popover); }
+.tsx td.weak { color: var(--color-bad); font-weight: 600; }
+.tsx td.strong { color: var(--color-ok); font-weight: 600; }
+.tsx .tabs { display: flex; gap: var(--cds-gap-xs); border-bottom: 1px solid var(--color-border-line); }
+.tsx .tabs button { font: inherit; font-size: var(--cds-font-size-body); background: transparent; color: var(--color-fg-muted); border: 0; border-bottom: 2px solid transparent; padding: var(--cds-pad-sm) var(--cds-pad-md); cursor: pointer; }
+.tsx .tabs button[aria-selected="true"] { color: var(--color-fg); border-bottom-color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.tsx .page { display: grid; gap: var(--cds-gap-lg); }
+.tsx .page[hidden], .tsx [hidden] { display: none !important; }
+.tsx .hero { text-align: center; padding: var(--cds-pad-xl) var(--cds-pad-lg); }
+.tsx .hero p { margin: 0; }
+.tsx .hero-kicker { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.tsx .hero-line { font-size: var(--cds-font-size-body); margin-top: var(--cds-gap-sm) !important; line-height: 1.8; }
+.tsx .hero-subj b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 2.2); color: var(--color-bad); line-height: 1.2; }
+.tsx .hero b.hero-num { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 1.3); color: var(--color-bad); }
+.tsx .rank { display: grid; gap: var(--cds-gap-md); margin-top: var(--cds-gap-md); min-height: 320px; }
+.tsx .rk { display: grid; grid-template-columns: 2.2rem 4rem 1fr; grid-template-areas: "no sub num" "no people people" "no bar bar"; column-gap: var(--cds-gap-sm); row-gap: 6px; align-items: center; padding-bottom: var(--cds-gap-md); border-bottom: 1px solid var(--color-border-line); }
+.tsx .rk:last-child { border-bottom: 0; }
+.tsx .rk-no { grid-area: no; align-self: start; width: 2rem; height: 2rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--cds-chart-muted); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.tsx .rk.first .rk-no { background: var(--cds-chart-status-critical); color: var(--color-bg); }
+.tsx .rk-sub { grid-area: sub; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.tsx .rk-num { grid-area: num; text-align: right; font-variant-numeric: tabular-nums; }
+.tsx .rk-num b { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); }
+.tsx .rk.first .rk-num b { color: var(--color-bad); }
+.tsx .rk-num small { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); margin-left: 2px; }
+.tsx .rk-people { grid-area: people; height: 8px; background: transparent; }
+.tsx .rk-people i { display: block; height: 100%; border-radius: var(--cds-radius); background: var(--cds-chart-status-critical); }
+.tsx .rk-bar { grid-area: bar; display: flex; height: 26px; border-radius: var(--cds-radius); overflow: hidden; font-size: var(--cds-font-size-caption); }
+.tsx .rk-bar span { display: flex; align-items: center; padding: 0 8px; white-space: nowrap; overflow: hidden; }
+.tsx .rk-bar .ok { color: var(--color-bg); }
+.tsx .rk-bar .lo { background: var(--cds-chart-status-critical); color: var(--color-bg); justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div id="dash-root">
+  <div id="gate" hidden>
+    <p>合言葉を入力してください</p>
+    <input id="gate-input" type="password" autocomplete="off">
+    <br><button id="gate-ok" type="button">開く</button>
+    <p id="gate-msg" class="muted" style="color:var(--color-bad);font-size:12px"></p>
+  </div>
+  <p id="banner" hidden></p>
+
+<div class="tsx" lang="ja" id="app">
+  <header id="top">
+    <h1>通知表・定期テスト分析（中1〜中3）</h1>
+  </header>
+  <div class="tabs" role="tablist" aria-label="分析の種類">
+    <button type="button" role="tab" data-tabbtn="n" aria-selected="true">通知表</button>
+    <button type="button" role="tab" data-tabbtn="s" aria-selected="false">定期テスト</button>
+    <button type="button" role="tab" data-tabbtn="c" aria-selected="false">科目追加候補</button>
+  </div>
+  <div class="bar" id="filters">
+    <div class="seg" role="group" aria-label="学年">
+      <button type="button" data-grade="中3" aria-pressed="true">中3</button>
+      <button type="button" data-grade="中2" aria-pressed="false">中2</button>
+      <button type="button" data-grade="中1" aria-pressed="false">中1</button>
+    </div>
+  </div>
+
+  <section class="page" id="tsuchi" data-tab="n">
+    <p class="lead"><span data-draw="n-tk-grade">—</span>の最新学期（<span data-draw="n-tk-term">—</span>）で、評定平均がいちばん高い教科は<b data-draw="n-tk-best">—</b>（<span data-draw="n-tk-best-v">—</span>）、いちばん低い教科は<b data-draw="n-tk-worst">—</b>（<span data-draw="n-tk-worst-v">—</span>）です。<span class="n-change">前の学期から最も伸びたのは<b data-draw="n-tk-up">—</b>（<span data-draw="n-tk-up-v">—</span>）、最も下がったのは<b data-draw="n-tk-down">—</b>（<span data-draw="n-tk-down-v">—</span>）です。</span></p>
+
+    <div class="bar">
+      <select data-draw="n-cls-pick" aria-label="教室"></select>
+      <p class="muted">評定は5段階。下の教室別の表の行をクリックしても絞り込めます。</p>
+    </div>
+
+    <div class="tiles" id="n-tiles">
+    <div class="card tile" data-subject="国語"><span class="lab">国語</span><b class="big" data-draw="n-t-mean">—</b><p class="row n-change">前回比 <span data-draw="n-t-delta">—</span></p><p class="row">評定5 <span data-draw="n-t-hi">—</span>・2以下 <span data-draw="n-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="社会"><span class="lab">社会</span><b class="big" data-draw="n-t-mean">—</b><p class="row n-change">前回比 <span data-draw="n-t-delta">—</span></p><p class="row">評定5 <span data-draw="n-t-hi">—</span>・2以下 <span data-draw="n-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="数学"><span class="lab">数学</span><b class="big" data-draw="n-t-mean">—</b><p class="row n-change">前回比 <span data-draw="n-t-delta">—</span></p><p class="row">評定5 <span data-draw="n-t-hi">—</span>・2以下 <span data-draw="n-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="理科"><span class="lab">理科</span><b class="big" data-draw="n-t-mean">—</b><p class="row n-change">前回比 <span data-draw="n-t-delta">—</span></p><p class="row">評定5 <span data-draw="n-t-hi">—</span>・2以下 <span data-draw="n-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="英語"><span class="lab">英語</span><b class="big" data-draw="n-t-mean">—</b><p class="row n-change">前回比 <span data-draw="n-t-delta">—</span></p><p class="row">評定5 <span data-draw="n-t-hi">—</span>・2以下 <span data-draw="n-t-lo">—</span></p></div>
+    </div>
+
+    <div class="card" id="n-trend-card">
+      <div class="bar" style="justify-content: space-between">
+        <h2>教科別 評定平均の推移</h2>
+        <div class="seg" role="group" aria-label="教科のまとまり"><button type="button" data-set="5" aria-pressed="true">5教科</button><button type="button" data-set="4" aria-pressed="false">実技4教科</button></div>
+      </div>
+      <p class="muted">学期ごとに、評定が入っている生徒全員の平均。学期によって入力済みの人数が違うため、変化は「同じ生徒で比べた変化」もあわせてご覧ください。</p>
+      <div class="chart" id="n-trend" data-draw="n-trend"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" id="n-dist-card">
+        <h2>評定の分布（最新学期）</h2>
+        <p class="muted">教科ごとの評定の内訳。赤い部分（2以下）が大きい教科ほど、つまずいている生徒が多い教科です。</p>
+        <div class="legend"><span><i class="sw-low"></i>2以下</span><span><i class="sw-3"></i>3</span><span><i class="sw-4"></i>4</span><span><i class="sw-5"></i>5</span></div>
+        <div class="chart" id="n-dist" data-draw="n-dist"></div>
+      </div>
+      <div class="card" id="n-change-card">
+        <h2>前の学期からの変化（同じ生徒で比較）</h2>
+        <p class="muted n-change">両方の学期に評定がある生徒だけで比較。左が評定の下がった人、右が上がった人の割合、右端の数字は平均の変化です。</p>
+        <p class="muted n-nochange" hidden>この学年は比べられる前のデータがないため、変化はまだ出せません。</p>
+        <div class="chart n-change" id="n-change" data-draw="n-change"></div>
+      </div>
+    </div>
+
+    <div class="card" id="n-ws-card">
+      <h2>生徒ごとの得意・苦手教科（<span data-draw="n-ws-term">—</span>）</h2>
+      <p class="muted">5教科すべて評定がある生徒について、本人の中でいちばん低い教科を「苦手」、いちばん高い教科を「得意」として数えた割合（同点は等分、5教科とも同じ評定の生徒は除く）。</p>
+      <div class="legend"><span><i class="sw-low"></i>苦手としている生徒の割合</span><span><i class="sw-5"></i>得意としている生徒の割合</span></div>
+      <div class="chart short" id="n-ws" data-draw="n-ws"></div>
+    </div>
+
+    <div class="card" id="n-class-card">
+      <h2>教室別（<span data-draw="n-cls-term">—</span>）</h2>
+      <p class="muted">5教科すべて評定がある生徒の平均。各行で最も低い教科を赤、最も高い教科を緑で示します。前回比は5科合計の平均の変化です（前の学期も評定がある生徒）。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>教室</th><th>人数</th><th>5科合計</th><th>前回比</th><th>国語</th><th>社会</th><th>数学</th><th>理科</th><th>英語</th></tr></thead>
+          <tbody data-draw="n-cls-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="muted">元データ：Googleスプレッドシート「通知表」の中1・中2・中3シート。空欄や #N/A のセルは集計から除いています。</p>
+  </section>
+
+  <section class="page" id="teiki" data-tab="s" hidden>
+    <p class="lead"><span data-draw="s-tk-grade">—</span>の最新のテスト（<span data-draw="s-tk-term">—</span>）で、平均点がいちばん高い教科は<b data-draw="s-tk-best">—</b>（<span data-draw="s-tk-best-v">—</span>）、いちばん低い教科は<b data-draw="s-tk-worst">—</b>（<span data-draw="s-tk-worst-v">—</span>）です。<span class="s-change">前回のテストから最も伸びたのは<b data-draw="s-tk-up">—</b>（<span data-draw="s-tk-up-v">—</span>）、最も下がったのは<b data-draw="s-tk-down">—</b>（<span data-draw="s-tk-down-v">—</span>）です。</span></p>
+
+    <div class="bar">
+      <select data-draw="s-cls-pick" aria-label="教室"></select>
+      <p class="muted">点数は各教科100点満点。下の教室別の表の行をクリックしても絞り込めます。</p>
+    </div>
+
+    <div class="tiles" id="s-tiles">
+    <div class="card tile" data-subject="国語"><span class="lab">国語</span><b class="big" data-draw="s-t-mean">—</b><p class="row s-change">前回比 <span data-draw="s-t-delta">—</span>点</p><p class="row">90点以上 <span data-draw="s-t-hi">—</span>・50点未満 <span data-draw="s-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="社会"><span class="lab">社会</span><b class="big" data-draw="s-t-mean">—</b><p class="row s-change">前回比 <span data-draw="s-t-delta">—</span>点</p><p class="row">90点以上 <span data-draw="s-t-hi">—</span>・50点未満 <span data-draw="s-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="数学"><span class="lab">数学</span><b class="big" data-draw="s-t-mean">—</b><p class="row s-change">前回比 <span data-draw="s-t-delta">—</span>点</p><p class="row">90点以上 <span data-draw="s-t-hi">—</span>・50点未満 <span data-draw="s-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="理科"><span class="lab">理科</span><b class="big" data-draw="s-t-mean">—</b><p class="row s-change">前回比 <span data-draw="s-t-delta">—</span>点</p><p class="row">90点以上 <span data-draw="s-t-hi">—</span>・50点未満 <span data-draw="s-t-lo">—</span></p></div>
+    <div class="card tile" data-subject="英語"><span class="lab">英語</span><b class="big" data-draw="s-t-mean">—</b><p class="row s-change">前回比 <span data-draw="s-t-delta">—</span>点</p><p class="row">90点以上 <span data-draw="s-t-hi">—</span>・50点未満 <span data-draw="s-t-lo">—</span></p></div>
+    </div>
+
+    <div class="card" id="s-trend-card">
+      <div class="bar" style="justify-content: space-between">
+        <h2>教科別 平均点の推移</h2>
+      </div>
+      <p class="muted">テストごとに、受けた生徒全員の平均点。中間テストは実施していない学校が多く人数が少ないうえ、テストごとに難しさも違います。変化は「同じ生徒で比べた変化」もあわせてご覧ください。</p>
+      <div class="chart" id="s-trend" data-draw="s-trend"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" id="s-dist-card">
+        <h2>点数の分布（最新のテスト）</h2>
+        <p class="muted">教科ごとの点数の内訳。赤い部分（50点未満）が大きい教科ほど、つまずいている生徒が多い教科です。</p>
+        <div class="legend"><span><i class="sw-low"></i>50点未満</span><span><i class="sw-3"></i>50〜69点</span><span><i class="sw-4"></i>70〜89点</span><span><i class="sw-5"></i>90点以上</span></div>
+        <div class="chart" id="s-dist" data-draw="s-dist"></div>
+      </div>
+      <div class="card" id="s-change-card">
+        <h2>前回のテストからの変化（同じ生徒で比較）</h2>
+        <p class="muted s-change">両方のテストを受けた生徒だけで比較。左が5点以上下がった人、右が5点以上上がった人の割合（5科合計は10点）、右端の数字は平均点の変化です。中間と期末を比べるときは、テストの範囲や難しさの違いにご注意ください。</p>
+        <p class="muted s-nochange" hidden>この学年は比べられる前のデータがないため、変化はまだ出せません。</p>
+        <div class="chart s-change" id="s-change" data-draw="s-change"></div>
+      </div>
+    </div>
+
+    <div class="card" id="s-ws-card">
+      <h2>生徒ごとの得意・苦手教科（<span data-draw="s-ws-term">—</span>）</h2>
+      <p class="muted">5教科すべて受けた生徒について、本人の中でいちばん点が低い教科を「苦手」、いちばん高い教科を「得意」として数えた割合（同点は等分）。5教科そろった最新のテストで集計します。</p>
+      <div class="legend"><span><i class="sw-low"></i>苦手としている生徒の割合</span><span><i class="sw-5"></i>得意としている生徒の割合</span></div>
+      <div class="chart short" id="s-ws" data-draw="s-ws"></div>
+    </div>
+
+    <div class="card" id="s-class-card">
+      <h2>教室別（<span data-draw="s-cls-term">—</span>）</h2>
+      <p class="muted">5教科そろった最新のテストで、5教科すべて受けた生徒の平均点。各行で最も低い教科を赤、最も高い教科を緑で示します。前回比は5科合計の平均点の変化です（前の5教科そろったテストも受けた生徒）。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>教室</th><th>人数</th><th>5科合計</th><th>前回比</th><th>国語</th><th>社会</th><th>数学</th><th>理科</th><th>英語</th></tr></thead>
+          <tbody data-draw="s-cls-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="muted">元データ：Googleスプレッドシート「定期テスト」の中1・中2・中3シート。空欄のセルは集計から除いています。</p>
+  </section>
+
+  <section class="page" id="kouho" data-tab="c" hidden>
+    <div class="seg" role="group" aria-label="元データ"><button type="button" data-csrcbtn="c" aria-pressed="true">通知表で見る</button><button type="button" data-csrcbtn="ct" aria-pressed="false">定期テストで見る</button></div>
+
+    <div class="cblock" data-csrc="c">
+    <div class="hero card">
+      <p class="hero-kicker"><span data-draw="c-grade">—</span>・<span data-draw="c-cls">—</span>｜<span data-draw="c-period">—</span></p>
+      <p class="hero-line">東セミがいちばん苦戦している科目は</p>
+      <p class="hero-subj"><b data-draw="c-top">—</b></p>
+      <p class="hero-line"><span data-draw="c-times-a">2回とも</span>評定3以下の生徒が <b class="hero-num" data-draw="c-top-n">—</b>人（<span data-draw="c-times-b">2回分そろった生徒</span>の <b data-draw="c-top-pct">—</b>%）</p>
+      <p class="hero-line muted" data-draw="c-top-ref"></p>
+    </div>
+
+    <div class="bar">
+      <select data-draw="c-cls-pick" aria-label="教室"></select>
+      <div class="legend"><span><i class="sw-ok"></i>評定4以上：OK</span><span><i class="sw-low"></i>評定3以下：科目追加候補</span></div>
+    </div>
+
+    <div class="card" id="c-rank-card">
+      <h2>科目別 追加候補ランキング（通知表）</h2>
+      <p class="muted">大きな数字は、生徒ごとの直近2回とも評定3以下だった生徒の人数（＝科目追加候補）。「参考」は、評定が1回分しかなく、その1回が3以下だった生徒の人数で、候補には含めません。帯は判定に使った評定をすべて合わせた、4以上と3以下の割合です。</p>
+      <div class="rank" data-draw="c-rank"></div>
+    </div>
+
+    <div class="card" id="c-class-card">
+      <h2>教室別 追加候補の人数（通知表）</h2>
+      <p class="muted">直近2回とも評定3以下だった生徒の人数。各行で最も多い教科を赤で示します。「延べ」は5教科の合計（1人が複数教科で数えられます）。「参考」は1回だけで評定3以下だった生徒の5教科の延べ人数です。行をクリックすると、その教室に絞り込めます。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>教室</th><th>人数</th><th>国語</th><th>社会</th><th>数学</th><th>理科</th><th>英語</th><th>延べ</th><th>参考</th></tr></thead>
+          <tbody data-draw="c-cls-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="muted">元データ：Googleスプレッドシート「通知表」。生徒ごと・教科ごとに、もらった通知表の直近2回の評定で判定します（学年で一律には決めません）。2学期制の学校は、前期が「2学期」、後期が「学年末」の列に入ります。さかのぼるのは最新の通知表から1年半前までです。中1は直近1回で判定します。「人数」は2回分そろった生徒の数です。</p>
+    </div>
+
+    <div class="cblock" data-csrc="ct" hidden>
+    <div class="hero card">
+      <p class="hero-kicker"><span data-draw="ct-grade">—</span>・<span data-draw="ct-cls">—</span>｜<span data-draw="ct-period">—</span></p>
+      <p class="hero-line">定期テストで、いちばん苦戦している科目は</p>
+      <p class="hero-subj"><b data-draw="ct-top">—</b></p>
+      <p class="hero-line"><span data-draw="ct-times-a">2回とも</span><span data-draw="ct-line-a">—</span>点未満の生徒が <b class="hero-num" data-draw="ct-top-n">—</b>人（<span data-draw="ct-times-b">2回分そろった生徒</span>の <b data-draw="ct-top-pct">—</b>%）</p>
+      <p class="hero-line muted" data-draw="ct-top-ref"></p>
+    </div>
+
+    <div class="bar">
+      <select data-draw="ct-cls-pick" aria-label="教室"></select>
+      <div class="seg" role="group" aria-label="基準点"><button type="button" data-line="60" aria-pressed="false">60点</button><button type="button" data-line="70" aria-pressed="true">70点</button><button type="button" data-line="80" aria-pressed="false">80点</button></div>
+      <div class="legend"><span><i class="sw-ok"></i><span data-draw="ct-line-b">—</span>点以上：OK</span><span><i class="sw-low"></i><span data-draw="ct-line-c">—</span>点未満：科目追加候補</span></div>
+    </div>
+
+    <div class="card" id="ct-rank-card">
+      <h2>科目別 追加候補ランキング（定期テスト）</h2>
+      <p class="muted">大きな数字は、生徒ごとの直近2回のテストとも基準点未満だった生徒の人数（＝科目追加候補）。「参考」は、点数が1回分しかなく、その1回が基準点未満だった生徒の人数で、候補には含めません。帯は判定に使った点数をすべて合わせた、基準点以上と未満の割合です。基準点は上のボタンで60・70・80点に切り替えられます。</p>
+      <div class="rank" data-draw="ct-rank"></div>
+    </div>
+
+    <div class="card" id="ct-class-card">
+      <h2>教室別 追加候補の人数（定期テスト）</h2>
+      <p class="muted">直近2回とも基準点未満だった生徒の人数。各行で最も多い教科を赤で示します。「延べ」は5教科の合計（1人が複数教科で数えられます）。「参考」は1回だけで基準点未満だった生徒の5教科の延べ人数です。行をクリックすると、その教室に絞り込めます。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>教室</th><th>人数</th><th>国語</th><th>社会</th><th>数学</th><th>理科</th><th>英語</th><th>延べ</th><th>参考</th></tr></thead>
+          <tbody data-draw="ct-cls-table"></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="muted">元データ：Googleスプレッドシート「定期テスト」。生徒ごと・教科ごとに、点数がある直近2回のテストで判定します（学年で一律には決めません）。空白のセルは0点にせず、その前のテストまでさかのぼります。さかのぼるのは最新のテストから1年半前までです。「人数」は2回分そろった生徒の数です。</p>
+    </div>
+  </section>
+</div>
+</div>
+
+<script>
+/* ===== Apps Script 用の小さな実行基盤（dash）：データ取得・再描画・フィルタ状態 ===== */
+window.dash = (() => {
+  const SRC = ['g1', 'g2', 'g3', 't1', 't2', 't3'];
+  const loaders = {}, calcs = {}, draws = {}, listeners = [], cache = {};
+  let raw = null, state = 'loading', errMsg = '';
+  const params = {};
+  function data(id) {
+    if (state !== 'ok') return { status: state, data: [], columns: [], message: errMsg };
+    if (cache[id]) return cache[id];
+    let r;
+    try {
+      if (SRC.includes(id)) {
+        const o = loaders[id].fn({ answer: { values: raw[id] } });
+        r = { status: 'ok', data: o.rows, columns: o.columns };
+      } else if (calcs[id]) {
+        const c = calcs[id];
+        const ins = c.inputs.map((i) => { const d = data(i); if (d.status !== 'ok') throw new Error(i + ': ' + (d.message || d.status)); return d.data; });
+        r = { status: 'ok', data: c.fn(...ins) };
+      } else r = { status: 'missing', data: [] };
+    } catch (e) { r = { status: 'error', data: [], message: String((e && e.message) || e) }; console.error(id, e); }
+    return (cache[id] = r);
+  }
+  function run() {
+    listeners.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+    Object.keys(draws).forEach((name) => {
+      document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { draws[name](el); } catch (e) { console.error(name, e); } });
+    });
+  }
+  let timer = null;
+  const later = () => { clearTimeout(timer); timer = setTimeout(run, 60); };
+  window.addEventListener('resize', later);
+  return {
+    loader: (id, o) => { loaders[id] = o; },
+    calc: (id, o) => { calcs[id] = o; },
+    data,
+    onData: (fn) => { listeners.push(fn); },
+    draw: (name, fn) => { draws[name] = fn; },
+    params: () => Object.assign({}, params),
+    setParams: (o) => { Object.keys(o).forEach((k) => { if (o[k] == null) delete params[k]; else params[k] = o[k]; }); run(); },
+    resetParams: () => { Object.keys(params).forEach((k) => delete params[k]); run(); },
+    setLink: () => {},
+    refresh: () => {},
+    colors: ['#2f6fed', '#e07b39', '#2a9d8f', '#9b5de5', '#d6a100', '#6c757d', '#c2185b', '#00838f'],
+    _set: (r) => { raw = r; state = 'ok'; Object.keys(cache).forEach((k) => delete cache[k]); },
+    _fail: (m) => { state = 'error'; errMsg = m; },
+    _run: run,
+  };
+})();
+</script>
+
+<script>
+['g1', 'g2', 'g3'].forEach((id, gi) => {
+  dash.loader(id, {
+    description: '通知表シートの表（1行＝生徒1人、学期ごとに教科が横に並ぶ）を、生徒×学期×教科の1行ずつに並べ直します。評定1〜5以外のセルは除きます。',
+    fn: ({ answer }) => {
+      const a = answer;
+      if (!a || !Array.isArray(a.values)) throw new Error('表の値が返りませんでした');
+      const grade = '中' + (gi + 1);
+      const subjects = ['国語', '社会', '数学', '理科', '英語', '体育', '音楽', '美術', '家庭科'];
+      const h0 = a.values[0] || [], h1 = a.values[1] || [];
+      const ci = h1.indexOf('教室名');
+      const starts = [];
+      h1.forEach((x, i) => { if (x === '国語') starts.push(i); });
+      const firstStart = starts.length ? starts[0] : h1.length;
+      const blocks = starts.map((s) => {
+        const m = String(h0[s] || '').match(/中([123])\s*(1学期|2学期|3学期|学年末)/);
+        if (!m) return null;
+        const k = m[2] === '1学期' ? 1 : m[2] === '2学期' ? 2 : 3;
+        const cols = [];
+        for (let j = s; j < s + 11 && j < h1.length; j++) if (subjects.includes(h1[j])) cols.push([j, h1[j]]);
+        return { term: '中' + m[1] + ' ' + (m[2] === '3学期' ? '学年末' : m[2]), term_no: (Number(m[1]) - 1) * 3 + k, mon: (Number(m[1]) - 1) * 12 + (k === 1 ? 3 : k === 2 ? 8 : 11), cols };
+      }).filter(Boolean);
+      const rows = [];
+      a.values.slice(2).forEach((r, i) => {
+        const cls = ci >= 0 ? String(r[ci] || '').trim().replace(/＋/g, '+').replace(/passion/gi, 'Passion').replace(/spirits/gi, 'Spirits') : '';
+        if (!cls) return;
+        const school = ci >= 0 && ci + 1 < firstStart && h1[ci + 1] === '' ? String(r[ci + 1] || '').trim() : '';
+        for (const b of blocks) for (const [j, subject] of b.cols) {
+          const v = String(r[j] ?? '').trim();
+          if (/^[1-5]$/.test(v)) rows.push({ grade, row: i + 3, cls, school, term: b.term, term_no: b.term_no, mon: b.mon, subject, v: Number(v) });
+        }
+      });
+      return { columns: ['grade', 'row', 'cls', 'school', 'term', 'term_no', 'mon', 'subject', 'v'], rows };
+    },
+  });
+});
+['t1', 't2', 't3'].forEach((id, gi) => {
+  dash.loader(id, {
+    description: '定期テストシートの表（1行＝生徒1人、テストごとに順位・合計・5教科の点数が横に並ぶ）を、生徒×テスト×教科の1行ずつに並べ直します。0〜100の数値以外のセルと順位・合計の列は除きます。',
+    fn: ({ answer }) => {
+      const a = answer;
+      if (!a || !Array.isArray(a.values)) throw new Error('表の値が返りませんでした');
+      const grade = '中' + (gi + 1);
+      const names = { '国': '国語', '社': '社会', '数': '数学', '理': '理科', '英': '英語', '国語': '国語', '社会': '社会', '数学': '数学', '理科': '理科', '英語': '英語' };
+      const h0 = a.values[0] || [], h1 = a.values[1] || [];
+      const ci = h1.indexOf('教室名');
+      const starts = [];
+      h1.forEach((x, i) => { if (x === '順位') starts.push(i); });
+      const firstStart = starts.length ? starts[0] : h1.length;
+      let g = 1, prevMon = -1;
+      // テストの時期（中1の4月を0とした月数）。1年半さかのぼる判定に使う。
+      const monOf = (label) => {
+        if (/中間/.test(label)) { if (/1学期|前期/.test(label)) return 1; if (/2学期/.test(label)) return 6; if (/後期/.test(label)) return 7; }
+        if (/期末/.test(label)) { if (/1学期/.test(label)) return 3; if (/前期/.test(label)) return 5; if (/2学期/.test(label)) return 8; if (/後期|3学期/.test(label)) return 10; }
+        if (/学年末/.test(label)) return 10;
+        return null;
+      };
+      const blocks = starts.map((s, idx) => {
+        let label = String(h0[s] || '').replace(/[（(].*$/, '').trim();
+        if (label === '1学期末') label = '1学期期末';
+        if (idx > 0 && label.startsWith('1学期')) { g += 1; prevMon = -1; }
+        const cols = [];
+        for (let j = s + 1; j < s + 7 && j < h1.length; j++) if (names[h1[j]]) cols.push([j, names[h1[j]]]);
+        const mm = monOf(label);
+        const rel = mm != null ? mm : Math.min(11, prevMon + 2);
+        prevMon = rel;
+        return { term: '中' + g + ' ' + label, term_no: idx + 1, mon: (g - 1) * 12 + rel, cols };
+      });
+      const rows = [];
+      a.values.slice(2).forEach((r, i) => {
+        const cls = ci >= 0 ? String(r[ci] || '').trim().replace(/＋/g, '+').replace(/passion/gi, 'Passion').replace(/spirits/gi, 'Spirits') : '';
+        if (!cls) return;
+        const school = ci >= 0 && ci + 1 < firstStart && h1[ci + 1] === '' ? String(r[ci + 1] || '').trim() : '';
+        for (const b of blocks) for (const [j, subject] of b.cols) {
+          const v = String(r[j] ?? '').trim();
+          if (/^\d{1,3}(\.\d+)?$/.test(v) && Number(v) <= 100) rows.push({ grade, row: i + 3, cls, school, term: b.term, term_no: b.term_no, mon: b.mon, subject, v: Number(v) });
+        }
+      });
+      return { columns: ['grade', 'row', 'cls', 'school', 'term', 'term_no', 'mon', 'subject', 'v'], rows };
+    },
+  });
+});
+
+dash.calc('avg_by_term', {
+  inputs: ['g1', 'g2', 'g3'],
+  fn: (g1, g2, g3) => {
+    const m = new Map();
+    for (const r of [...g1, ...g2, ...g3]) {
+      for (const cls of ['全教室', r.cls]) {
+        const k = [r.grade, cls, r.term, r.subject].join('|');
+        let o = m.get(k);
+        if (!o) { o = { grade: r.grade, cls, term: r.term, term_no: r.term_no, subject: r.subject, n: 0, sum: 0, c2: 0, c3: 0, c4: 0, c5: 0 }; m.set(k, o); }
+        o.n += 1; o.sum += r.v;
+        if (r.v <= 2) o.c2 += 1; else if (r.v === 3) o.c3 += 1; else if (r.v === 4) o.c4 += 1; else o.c5 += 1;
+      }
+    }
+    return [...m.values()].map((o) => ({
+      grade: o.grade, cls: o.cls, term: o.term, term_no: o.term_no, subject: o.subject, n: o.n,
+      mean: Math.round((o.sum / o.n) * 100) / 100,
+      low_pct: Math.round((o.c2 / o.n) * 100), three_pct: Math.round((o.c3 / o.n) * 100),
+      four_pct: Math.round((o.c4 / o.n) * 100), five_pct: Math.round((o.c5 / o.n) * 100),
+    }));
+  },
+});
+
+dash.calc('change', {
+  inputs: ['g1', 'g2', 'g3'],
+  fn: (g1, g2, g3) => {
+    const rows = [...g1, ...g2, ...g3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const terms = new Map();
+    for (const r of rows) {
+      if (!terms.has(r.grade)) terms.set(r.grade, new Map());
+      terms.get(r.grade).set(r.term_no, r.term);
+    }
+    const pick = new Map();
+    for (const [g, t] of terms) {
+      const nos = [...t.keys()].sort((a, b) => a - b);
+      if (nos.length >= 2) pick.set(g, { to: nos[nos.length - 1], from: nos[nos.length - 2], toTerm: t.get(nos[nos.length - 1]), fromTerm: t.get(nos[nos.length - 2]) });
+    }
+    const st = new Map();
+    for (const r of rows) {
+      const p = pick.get(r.grade);
+      if (!p || (r.term_no !== p.to && r.term_no !== p.from)) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, from: {}, to: {} });
+      st.get(k)[r.term_no === p.to ? 'to' : 'from'][r.subject] = r.v;
+    }
+    const m = new Map();
+    const add = (s, subject, d) => {
+      for (const cls of ['全教室', s.cls]) {
+        const k = [s.grade, cls, subject].join('|');
+        let o = m.get(k);
+        if (!o) { const p = pick.get(s.grade); o = { grade: s.grade, cls, subject, from_term: p.fromTerm, to_term: p.toTerm, n: 0, sum: 0, up: 0, same: 0, down: 0 }; m.set(k, o); }
+        o.n += 1; o.sum += d;
+        if (d > 0) o.up += 1; else if (d < 0) o.down += 1; else o.same += 1;
+      }
+    };
+    for (const s of st.values()) {
+      for (const subject of Object.keys(s.to)) if (subject in s.from) add(s, subject, s.to[subject] - s.from[subject]);
+      if (five.every((x) => x in s.to && x in s.from)) add(s, '5科合計', five.reduce((t, x) => t + s.to[x] - s.from[x], 0));
+    }
+    return [...m.values()].map((o) => ({
+      grade: o.grade, cls: o.cls, subject: o.subject, from_term: o.from_term, to_term: o.to_term, n: o.n,
+      delta: Math.round((o.sum / o.n) * 100) / 100,
+      up: o.up, same: o.same, down: o.down,
+      up_pct: Math.round((o.up / o.n) * 100), down_pct: Math.round((o.down / o.n) * 100),
+    }));
+  },
+});
+
+dash.calc('weak_strong', {
+  inputs: ['g1', 'g2', 'g3'],
+  fn: (g1, g2, g3) => {
+    const rows = [...g1, ...g2, ...g3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const latest = new Map();
+    for (const r of rows) latest.set(r.grade, Math.max(latest.get(r.grade) || 0, r.term_no));
+    const st = new Map();
+    for (const r of rows) {
+      if (r.term_no !== latest.get(r.grade) || !five.includes(r.subject)) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, term: r.term, v: {} });
+      st.get(k).v[r.subject] = r.v;
+    }
+    const m = new Map();
+    const get = (s, cls) => {
+      const k = s.grade + '|' + cls;
+      if (!m.has(k)) m.set(k, { grade: s.grade, cls, term: s.term, n: 0, flat: 0, weak: {}, strong: {} });
+      return m.get(k);
+    };
+    for (const s of st.values()) {
+      if (!five.every((x) => x in s.v)) continue;
+      const vals = five.map((x) => s.v[x]);
+      const lo = Math.min(...vals), hi = Math.max(...vals);
+      for (const cls of ['全教室', s.cls]) {
+        const o = get(s, cls);
+        o.n += 1;
+        if (lo === hi) { o.flat += 1; continue; }
+        const ws = five.filter((x) => s.v[x] === lo), ss = five.filter((x) => s.v[x] === hi);
+        for (const x of ws) o.weak[x] = (o.weak[x] || 0) + 1 / ws.length;
+        for (const x of ss) o.strong[x] = (o.strong[x] || 0) + 1 / ss.length;
+      }
+    }
+    const out = [];
+    for (const o of m.values()) for (const subject of five) {
+      out.push({
+        grade: o.grade, cls: o.cls, term: o.term, subject, students: o.n, flat: o.flat,
+        weak_pct: o.n ? Math.round(((o.weak[subject] || 0) / o.n) * 100) : 0,
+        strong_pct: o.n ? Math.round(((o.strong[subject] || 0) / o.n) * 100) : 0,
+      });
+    }
+    return out;
+  },
+});
+
+dash.calc('by_class', {
+  inputs: ['g1', 'g2', 'g3'],
+  fn: (g1, g2, g3) => {
+    const rows = [...g1, ...g2, ...g3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const nos = new Map();
+    for (const r of rows) { if (!nos.has(r.grade)) nos.set(r.grade, new Set()); nos.get(r.grade).add(r.term_no); }
+    const last = new Map(), prev = new Map();
+    for (const [g, s] of nos) { const a = [...s].sort((x, y) => x - y); last.set(g, a[a.length - 1]); if (a.length > 1) prev.set(g, a[a.length - 2]); }
+    const st = new Map();
+    for (const r of rows) {
+      if (!five.includes(r.subject)) continue;
+      const which = r.term_no === last.get(r.grade) ? 'to' : r.term_no === prev.get(r.grade) ? 'from' : null;
+      if (!which) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, to: {}, from: {} });
+      st.get(k)[which][r.subject] = r.v;
+      if (which === 'to') st.get(k).term = r.term;
+    }
+    const m = new Map();
+    for (const s of st.values()) {
+      if (!five.every((x) => x in s.to)) continue;
+      const tot = five.reduce((t, x) => t + s.to[x], 0);
+      const both = five.every((x) => x in s.from);
+      for (const cls of ['全教室', s.cls]) {
+        const k = s.grade + '|' + cls;
+        if (!m.has(k)) m.set(k, { grade: s.grade, cls, term: s.term, n: 0, sum: 0, dn: 0, dsum: 0, subj: {} });
+        const o = m.get(k);
+        o.n += 1; o.sum += tot;
+        for (const x of five) o.subj[x] = (o.subj[x] || 0) + s.to[x];
+        if (both) { o.dn += 1; o.dsum += tot - five.reduce((t, x) => t + s.from[x], 0); }
+      }
+    }
+    return [...m.values()].map((o) => {
+      const r = { grade: o.grade, cls: o.cls, term: o.term, n: o.n, avg5: Math.round((o.sum / o.n) * 10) / 10, delta5: o.dn ? Math.round((o.dsum / o.dn) * 100) / 100 : null };
+      for (const x of five) r[x] = Math.round((o.subj[x] / o.n) * 100) / 100;
+      return r;
+    });
+  },
+});
+
+dash.calc('t_avg', {
+  inputs: ['t1', 't2', 't3'],
+  fn: (t1, t2, t3) => {
+    const m = new Map();
+    for (const r of [...t1, ...t2, ...t3]) {
+      for (const cls of ['全教室', r.cls]) {
+        const k = [r.grade, cls, r.term, r.subject].join('|');
+        let o = m.get(k);
+        if (!o) { o = { grade: r.grade, cls, term: r.term, term_no: r.term_no, subject: r.subject, n: 0, sum: 0, b1: 0, b2: 0, b3: 0, b4: 0 }; m.set(k, o); }
+        o.n += 1; o.sum += r.v;
+        if (r.v < 50) o.b1 += 1; else if (r.v < 70) o.b2 += 1; else if (r.v < 90) o.b3 += 1; else o.b4 += 1;
+      }
+    }
+    return [...m.values()].map((o) => ({
+      grade: o.grade, cls: o.cls, term: o.term, term_no: o.term_no, subject: o.subject, n: o.n,
+      mean: Math.round((o.sum / o.n) * 10) / 10,
+      b1_pct: Math.round((o.b1 / o.n) * 100), b2_pct: Math.round((o.b2 / o.n) * 100),
+      b3_pct: Math.round((o.b3 / o.n) * 100), b4_pct: Math.round((o.b4 / o.n) * 100),
+    }));
+  },
+});
+
+dash.calc('t_change', {
+  inputs: ['t1', 't2', 't3'],
+  fn: (t1, t2, t3) => {
+    const rows = [...t1, ...t2, ...t3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const terms = new Map();
+    for (const r of rows) {
+      if (!terms.has(r.grade)) terms.set(r.grade, new Map());
+      terms.get(r.grade).set(r.term_no, r.term);
+    }
+    const pick = new Map();
+    for (const [g, t] of terms) {
+      const nos = [...t.keys()].sort((a, b) => a - b);
+      if (nos.length >= 2) pick.set(g, { to: nos[nos.length - 1], from: nos[nos.length - 2], toTerm: t.get(nos[nos.length - 1]), fromTerm: t.get(nos[nos.length - 2]) });
+    }
+    const st = new Map();
+    for (const r of rows) {
+      const p = pick.get(r.grade);
+      if (!p || (r.term_no !== p.to && r.term_no !== p.from)) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, from: {}, to: {} });
+      st.get(k)[r.term_no === p.to ? 'to' : 'from'][r.subject] = r.v;
+    }
+    const m = new Map();
+    const add = (s, subject, d) => {
+      const th = subject === '5科合計' ? 10 : 5;
+      for (const cls of ['全教室', s.cls]) {
+        const k = [s.grade, cls, subject].join('|');
+        let o = m.get(k);
+        if (!o) { const p = pick.get(s.grade); o = { grade: s.grade, cls, subject, from_term: p.fromTerm, to_term: p.toTerm, n: 0, sum: 0, up: 0, same: 0, down: 0 }; m.set(k, o); }
+        o.n += 1; o.sum += d;
+        if (d >= th) o.up += 1; else if (d <= -th) o.down += 1; else o.same += 1;
+      }
+    };
+    for (const s of st.values()) {
+      for (const subject of Object.keys(s.to)) if (subject in s.from) add(s, subject, s.to[subject] - s.from[subject]);
+      if (five.every((x) => x in s.to && x in s.from)) add(s, '5科合計', five.reduce((t, x) => t + s.to[x] - s.from[x], 0));
+    }
+    return [...m.values()].map((o) => ({
+      grade: o.grade, cls: o.cls, subject: o.subject, from_term: o.from_term, to_term: o.to_term, n: o.n,
+      delta: Math.round((o.sum / o.n) * 10) / 10,
+      up: o.up, same: o.same, down: o.down,
+      up_pct: Math.round((o.up / o.n) * 100), down_pct: Math.round((o.down / o.n) * 100),
+    }));
+  },
+});
+
+dash.calc('t_ws', {
+  inputs: ['t1', 't2', 't3'],
+  fn: (t1, t2, t3) => {
+    const rows = [...t1, ...t2, ...t3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const subj = new Map();
+    for (const r of rows) { const k = r.grade + '|' + r.term_no; if (!subj.has(k)) subj.set(k, new Set()); subj.get(k).add(r.subject); }
+    const latest = new Map();
+    for (const r of rows) if (subj.get(r.grade + '|' + r.term_no).size === 5) latest.set(r.grade, Math.max(latest.get(r.grade) || 0, r.term_no));
+    const st = new Map();
+    for (const r of rows) {
+      if (r.term_no !== latest.get(r.grade) || !five.includes(r.subject)) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, term: r.term, v: {} });
+      st.get(k).v[r.subject] = r.v;
+    }
+    const m = new Map();
+    const get = (s, cls) => {
+      const k = s.grade + '|' + cls;
+      if (!m.has(k)) m.set(k, { grade: s.grade, cls, term: s.term, n: 0, flat: 0, weak: {}, strong: {} });
+      return m.get(k);
+    };
+    for (const s of st.values()) {
+      if (!five.every((x) => x in s.v)) continue;
+      const vals = five.map((x) => s.v[x]);
+      const lo = Math.min(...vals), hi = Math.max(...vals);
+      for (const cls of ['全教室', s.cls]) {
+        const o = get(s, cls);
+        o.n += 1;
+        if (lo === hi) { o.flat += 1; continue; }
+        const ws = five.filter((x) => s.v[x] === lo), ss = five.filter((x) => s.v[x] === hi);
+        for (const x of ws) o.weak[x] = (o.weak[x] || 0) + 1 / ws.length;
+        for (const x of ss) o.strong[x] = (o.strong[x] || 0) + 1 / ss.length;
+      }
+    }
+    const out = [];
+    for (const o of m.values()) for (const subject of five) {
+      out.push({
+        grade: o.grade, cls: o.cls, term: o.term, subject, students: o.n, flat: o.flat,
+        weak_pct: o.n ? Math.round(((o.weak[subject] || 0) / o.n) * 100) : 0,
+        strong_pct: o.n ? Math.round(((o.strong[subject] || 0) / o.n) * 100) : 0,
+      });
+    }
+    return out;
+  },
+});
+
+dash.calc('t_class', {
+  inputs: ['t1', 't2', 't3'],
+  fn: (t1, t2, t3) => {
+    const rows = [...t1, ...t2, ...t3];
+    const five = ['国語', '社会', '数学', '理科', '英語'];
+    const subj = new Map();
+    for (const r of rows) { const k = r.grade + '|' + r.term_no; if (!subj.has(k)) subj.set(k, new Set()); subj.get(k).add(r.subject); }
+    const nos = new Map();
+    for (const r of rows) { if (subj.get(r.grade + '|' + r.term_no).size !== 5) continue; if (!nos.has(r.grade)) nos.set(r.grade, new Set()); nos.get(r.grade).add(r.term_no); }
+    const last = new Map(), prev = new Map();
+    for (const [g, s] of nos) { const a = [...s].sort((x, y) => x - y); last.set(g, a[a.length - 1]); if (a.length > 1) prev.set(g, a[a.length - 2]); }
+    const st = new Map();
+    for (const r of rows) {
+      if (!five.includes(r.subject)) continue;
+      const which = r.term_no === last.get(r.grade) ? 'to' : r.term_no === prev.get(r.grade) ? 'from' : null;
+      if (!which) continue;
+      const k = r.grade + '|' + r.row;
+      if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, to: {}, from: {} });
+      st.get(k)[which][r.subject] = r.v;
+      if (which === 'to') st.get(k).term = r.term;
+    }
+    const m = new Map();
+    for (const s of st.values()) {
+      if (!five.every((x) => x in s.to)) continue;
+      const tot = five.reduce((t, x) => t + s.to[x], 0);
+      const both = five.every((x) => x in s.from);
+      for (const cls of ['全教室', s.cls]) {
+        const k = s.grade + '|' + cls;
+        if (!m.has(k)) m.set(k, { grade: s.grade, cls, term: s.term, n: 0, sum: 0, dn: 0, dsum: 0, subj: {} });
+        const o = m.get(k);
+        o.n += 1; o.sum += tot;
+        for (const x of five) o.subj[x] = (o.subj[x] || 0) + s.to[x];
+        if (both) { o.dn += 1; o.dsum += tot - five.reduce((t, x) => t + s.from[x], 0); }
+      }
+    }
+    return [...m.values()].map((o) => {
+      const r = { grade: o.grade, cls: o.cls, term: o.term, n: o.n, avg5: Math.round((o.sum / o.n) * 10) / 10, delta5: o.dn ? Math.round((o.dsum / o.dn) * 10) / 10 : null };
+      for (const x of five) r[x] = Math.round((o.subj[x] / o.n) * 10) / 10;
+      return r;
+    });
+  },
+});
+
+/*
+ * 科目追加候補：生徒ごと・教科ごとに「成績がある直近2回」を使う（学年で一律に決めない）。
+ * - さかのぼるのは、その学年の最新の成績から1年半（18か月）前まで。
+ * - 通知表の中1は1回（直近）で判断する。定期テストの中1は2回で判断する。
+ * - 学年全体で成績が1回分しかないときは1回で判断する。
+ * - 2回必要なのに1回しかない生徒は候補に入れず、「1回だけで基準を下回った生徒（参考）」として別に数える。
+ * - 空白は0点にしない（データなしとして飛ばす）。
+ */
+const LOOKBACK_MONTHS = 18;
+function perStudentCand(rows, lines, isLow, g1One) {
+  const five = ['国語', '社会', '数学', '理科', '英語'];
+  const now = new Map(), latestTerm = new Map();
+  for (const r of rows) {
+    if (!five.includes(r.subject)) continue;
+    if (!now.has(r.grade) || r.mon > now.get(r.grade) || (r.mon === now.get(r.grade) && r.term_no > latestTerm.get(r.grade).no)) {
+      now.set(r.grade, r.mon); latestTerm.set(r.grade, { no: r.term_no, name: r.term });
+    }
+  }
+  const from = (g) => now.get(g) - LOOKBACK_MONTHS;
+  const tset = new Map();
+  for (const r of rows) {
+    if (!five.includes(r.subject) || r.mon < from(r.grade)) continue;
+    if (!tset.has(r.grade)) tset.set(r.grade, new Set());
+    tset.get(r.grade).add(r.term_no);
+  }
+  // g1One：通知表の中1は直近2回がそろわないので、1回で判断する。
+  const need = (g) => (g1One && g === '中1' ? 1 : Math.min(2, (tset.get(g) || new Set()).size));
+  const st = new Map();
+  for (const r of rows) {
+    if (!five.includes(r.subject) || r.mon < from(r.grade)) continue;
+    const k = r.grade + '|' + r.row;
+    if (!st.has(k)) st.set(k, { grade: r.grade, cls: r.cls, v: {} });
+    const s = st.get(k);
+    (s.v[r.subject] = s.v[r.subject] || new Map()).set(r.term_no, r.v);
+  }
+  const agg = new Map();
+  const get = (g, cls, subject, line) => {
+    const k = [g, cls, subject, line].join('|');
+    if (!agg.has(k)) agg.set(k, { grade: g, cls, subject, line, n: 0, ok: 0, low: 0, students: 0, cand: 0, one: 0, ref: 0 });
+    return agg.get(k);
+  };
+  for (const s of st.values()) {
+    const nd = need(s.grade);
+    for (const subject of five) {
+      const m = s.v[subject];
+      if (!m) continue;
+      const recs = [...m.entries()].sort((a, b) => b[0] - a[0]).map((e) => e[1]);
+      for (const cls of ['全教室', s.cls]) for (const line of lines) {
+        const o = get(s.grade, cls, subject, line);
+        if (recs.length >= nd) {
+          const use = recs.slice(0, nd);
+          o.students += 1;
+          for (const v of use) { o.n += 1; if (isLow(v, line)) o.low += 1; else o.ok += 1; }
+          if (use.every((v) => isLow(v, line))) o.cand += 1;
+        } else {
+          o.one += 1;
+          if (isLow(recs[0], line)) o.ref += 1;
+        }
+      }
+    }
+  }
+  const r1 = (x) => Math.round(x * 10) / 10;
+  return [...agg.values()].map((o) => {
+    const nd = need(o.grade), lt = latestTerm.get(o.grade).name;
+    return {
+      grade: o.grade, cls: o.cls, subject: o.subject, line: o.line, times: nd,
+      period: nd >= 2 ? `生徒ごとの直近2回（最新：${lt}、最大1年半前まで）` : `直近1回（${lt}）`,
+      n: o.n, ok_pct: o.n ? r1((o.ok / o.n) * 100) : 0, low_pct: o.n ? r1((o.low / o.n) * 100) : 0,
+      students: o.students, cand: o.cand, cand_pct: o.students ? r1((o.cand / o.students) * 100) : 0,
+      one: o.one, ref: o.ref,
+    };
+  });
+}
+
+dash.calc('cand', {
+  inputs: ['g1', 'g2', 'g3'],
+  fn: (g1, g2, g3) => perStudentCand([...g1, ...g2, ...g3], [0], (v) => v <= 3, true),
+});
+
+dash.calc('cand_cls', {
+  inputs: ['cand'],
+  fn: (cand) => {
+    const m = new Map();
+    for (const r of cand) {
+      const k = r.grade + '|' + r.cls;
+      if (!m.has(k)) m.set(k, { grade: r.grade, cls: r.cls, students: 0, total: 0, ref: 0 });
+      const o = m.get(k);
+      o[r.subject] = r.cand;
+      o.students = Math.max(o.students, r.students);
+      o.total += r.cand;
+      o.ref += r.ref;
+    }
+    return [...m.values()];
+  },
+});
+
+dash.calc('t_cand', {
+  inputs: ['t1', 't2', 't3'],
+  fn: (t1, t2, t3) => perStudentCand([...t1, ...t2, ...t3], [60, 70, 80], (v, line) => v < line, false),
+});
+
+dash.calc('t_cand_cls', {
+  inputs: ['t_cand'],
+  fn: (t_cand) => {
+    const m = new Map();
+    for (const r of t_cand) {
+      const k = r.grade + '|' + r.cls + '|' + r.line;
+      if (!m.has(k)) m.set(k, { grade: r.grade, cls: r.cls, line: r.line, students: 0, total: 0, ref: 0 });
+      const o = m.get(k);
+      o[r.subject] = r.cand;
+      o.students = Math.max(o.students, r.students);
+      o.total += r.cand;
+      o.ref += r.ref;
+    }
+    return [...m.values()];
+  },
+});
+</script>
+
+<script>
+(() => {
+  const FIVE = ['国語', '社会', '数学', '理科', '英語'];
+  const FOUR = ['体育', '音楽', '美術', '家庭科'];
+  const NINE = FIVE.concat(FOUR);
+  const f1 = d3.format('.1f'), f2 = d3.format('.2f');
+  const sg = (f) => (v) => (v > 0 ? '+' : v < 0 ? '−' : '±') + f(Math.abs(v));
+  const P = () => {
+    const p = dash.params();
+    return { grade: p.grade || '中3', cls: p.cls || '全教室', set: p.set || '5', tab: p.tab === 's' || p.tab === 'c' ? p.tab : 'n' };
+  };
+  const colorOf = (s) => { const i = NINE.indexOf(s); return dash.colors[(i < 0 ? 0 : i % 5) % dash.colors.length]; };
+  const CRIT = 'var(--cds-chart-status-critical)', MUTED = 'var(--cds-chart-muted)';
+
+  const CFG = {
+    n: {
+      avg: 'avg_by_term', change: 'change', ws: 'weak_strong', cls: 'by_class',
+      fmt: f2, dfmt: sg(f2), unit: '', subFmt: f2, avg5Fmt: f1, d5Fmt: sg(f2),
+      hi: 'five_pct', lo: 'low_pct',
+      segs: [['low_pct', CRIT, 1, '2以下'], ['three_pct', MUTED, 1, '3'], ['four_pct', 0, 0.5, '4'], ['five_pct', 0, 1, '5']],
+      distSubjects: NINE, changeSubjects: NINE.concat(['5科合計']),
+      trendSubjects: (p) => (p.set === '4' ? FOUR : FIVE),
+      upLab: '上がった', downLab: '下がった', sameLab: '同じ', meanLab: '平均',
+    },
+    s: {
+      avg: 't_avg', change: 't_change', ws: 't_ws', cls: 't_class',
+      fmt: f1, dfmt: (v) => sg(f1)(v) + '点', unit: '点', subFmt: f1, avg5Fmt: f1, d5Fmt: sg(f1),
+      hi: 'b4_pct', lo: 'b1_pct',
+      segs: [['b1_pct', CRIT, 1, '50点未満'], ['b2_pct', MUTED, 1, '50〜69点'], ['b3_pct', 0, 0.5, '70〜89点'], ['b4_pct', 0, 1, '90点以上']],
+      distSubjects: FIVE, changeSubjects: FIVE.concat(['5科合計']),
+      trendSubjects: () => FIVE,
+      upLab: '上がった（5点以上）', downLab: '下がった（5点以上）', sameLab: '変化5点未満', meanLab: '平均点',
+    },
+  };
+
+  document.querySelectorAll('.tsx .sw-5').forEach((e) => { e.style.background = dash.colors[0]; });
+  document.querySelectorAll('.tsx .sw-4').forEach((e) => { e.style.background = dash.colors[0]; e.style.opacity = '0.5'; });
+
+  document.querySelectorAll('.tsx [data-tabbtn]').forEach((b) => b.addEventListener('click', () => dash.setParams({ tab: b.dataset.tabbtn })));
+  document.querySelectorAll('.tsx [data-grade]').forEach((b) => b.addEventListener('click', () => dash.setParams({ grade: b.dataset.grade, cls: null })));
+  document.querySelectorAll('.tsx [data-set]').forEach((b) => b.addEventListener('click', () => dash.setParams({ set: b.dataset.set })));
+  document.querySelectorAll('.tsx tbody[data-draw$="-cls-table"]').forEach((tb) => tb.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-cls]');
+    if (tr) dash.setParams({ cls: tr.dataset.cls === '全教室' || tr.dataset.cls === P().cls ? null : tr.dataset.cls });
+  }));
+
+  dash.onData(() => {
+    const p = P();
+    document.querySelectorAll('.tsx [data-tabbtn]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tabbtn === p.tab)));
+    document.querySelectorAll('.tsx section[data-tab]').forEach((s) => { s.hidden = s.dataset.tab !== p.tab; });
+    document.querySelectorAll('.tsx [data-grade]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.grade === p.grade)));
+    document.querySelectorAll('.tsx [data-set]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.set === p.set)));
+    document.getElementById('filters').hidden = false;
+    if (!CFG[p.tab]) return;
+    const ch = dash.data(CFG[p.tab].change);
+    const has = ch.status !== 'ok' || ch.data.some((r) => r.grade === p.grade);
+    document.querySelectorAll('.tsx .' + p.tab + '-change').forEach((e) => { e.hidden = !has; });
+    document.querySelectorAll('.tsx .' + p.tab + '-nochange').forEach((e) => { e.hidden = has; });
+  });
+
+  const reset = (el) => { el.textContent = '—'; };
+  const tipIn = (el) => { let t = el.querySelector('.tip'); if (!t) { t = document.createElement('div'); t.className = 'tip'; el.appendChild(t); } t.hidden = true; return t; };
+  const place = (el, tip, x, y) => {
+    tip.hidden = false;
+    const w = tip.offsetWidth, W = el.clientWidth;
+    tip.style.left = Math.max(0, Math.min(W - w, x + 12)) + 'px';
+    tip.style.top = Math.max(0, y - tip.offsetHeight - 8) + 'px';
+  };
+  const tipLine = (tip, head, lines) => {
+    tip.replaceChildren();
+    const h = document.createElement('div'); h.className = 't'; h.textContent = head; tip.appendChild(h);
+    for (const [c, label] of lines) { const l = document.createElement('div'); if (c) { const i = document.createElement('i'); i.style.background = c; l.appendChild(i); } l.appendChild(document.createTextNode(label)); tip.appendChild(l); }
+  };
+  const measure = (svg, s) => { const t = svg.append('text').text(s); const w = t.node().getComputedTextLength(); t.remove(); return w; };
+
+  for (const k of ['n', 's']) {
+    const C = CFG[k];
+    const latestTerm = (rows, grade) => {
+      let best = null;
+      for (const r of rows) if (r.grade === grade && r.cls === '全教室' && (!best || r.term_no > best.term_no)) best = r;
+      return best ? best.term : null;
+    };
+    const cur = () => {
+      const d = dash.data(C.avg);
+      if (d.status !== 'ok') return null;
+      const p = P();
+      const term = latestTerm(d.data, p.grade);
+      return { p, term, rows: d.data.filter((r) => r.grade === p.grade && r.cls === p.cls && r.term === term) };
+    };
+
+    dash.draw(k + '-tk-grade', (el) => { el.textContent = P().grade; });
+    dash.draw(k + '-tk-term', (el) => {
+      const c = cur(); if (!c || !c.term || !c.rows.length) return reset(el);
+      el.textContent = c.term;
+    });
+    const ext = (hi) => {
+      const c = cur(); if (!c) return null;
+      const r5 = c.rows.filter((r) => FIVE.includes(r.subject));
+      if (!r5.length) return null;
+      return r5.reduce((a, b) => ((hi ? b.mean > a.mean : b.mean < a.mean) ? b : a));
+    };
+    const drawExt = (hi, field) => (el) => {
+      const r = ext(hi); if (!r) return reset(el);
+      el.textContent = field === 'mean' ? C.fmt(r.mean) + C.unit : r.subject;
+    };
+    dash.draw(k + '-tk-best', drawExt(true, 'subject'));
+    dash.draw(k + '-tk-best-v', drawExt(true, 'mean'));
+    dash.draw(k + '-tk-worst', drawExt(false, 'subject'));
+    dash.draw(k + '-tk-worst-v', drawExt(false, 'mean'));
+    const chExt = (hi) => {
+      const d = dash.data(C.change); if (d.status !== 'ok') return null;
+      const p = P();
+      const r5 = d.data.filter((r) => r.grade === p.grade && r.cls === p.cls && FIVE.includes(r.subject));
+      if (!r5.length) return null;
+      return r5.reduce((a, b) => ((hi ? b.delta > a.delta : b.delta < a.delta) ? b : a));
+    };
+    const drawCh = (hi, field) => (el) => {
+      const r = chExt(hi); if (!r) return reset(el);
+      el.textContent = field === 'delta' ? C.dfmt(r.delta) : r.subject;
+    };
+    dash.draw(k + '-tk-up', drawCh(true, 'subject'));
+    dash.draw(k + '-tk-up-v', drawCh(true, 'delta'));
+    dash.draw(k + '-tk-down', drawCh(false, 'subject'));
+    dash.draw(k + '-tk-down-v', drawCh(false, 'delta'));
+
+    const tileVal = (field, fmt) => (el) => {
+      const c = cur(); const s = el.closest('[data-subject]')?.dataset.subject;
+      const r = c && c.rows.find((x) => x.subject === s);
+      if (!r) return reset(el);
+      el.textContent = fmt(r[field]);
+    };
+    dash.draw(k + '-t-mean', tileVal('mean', C.fmt));
+    dash.draw(k + '-t-hi', tileVal(C.hi, (v) => v + '%'));
+    dash.draw(k + '-t-lo', tileVal(C.lo, (v) => v + '%'));
+    dash.draw(k + '-t-delta', (el) => {
+      const d = dash.data(C.change); const p = P(); const s = el.closest('[data-subject]')?.dataset.subject;
+      const r = d.status === 'ok' && d.data.find((x) => x.grade === p.grade && x.cls === p.cls && x.subject === s);
+      el.classList.remove('up', 'down');
+      if (!r) return reset(el);
+      el.textContent = (r.delta > 0 ? '+' : r.delta < 0 ? '−' : '±') + C.fmt(Math.abs(r.delta));
+      if (r.delta > 0) el.classList.add('up'); else if (r.delta < 0) el.classList.add('down');
+    });
+
+    dash.draw(k + '-cls-pick', (sel) => {
+      const d = dash.data(C.cls); const p = P();
+      const names = d.status === 'ok' ? d.data.filter((r) => r.grade === p.grade && r.cls !== '全教室').map((r) => r.cls).sort((a, b) => a.localeCompare(b, 'ja')) : [];
+      if (p.cls !== '全教室' && !names.includes(p.cls)) names.unshift(p.cls);
+      sel.replaceChildren(new Option('全教室', ''), ...names.map((n) => new Option(n, n)));
+      sel.value = p.cls === '全教室' ? '' : p.cls;
+      sel.onchange = () => dash.setParams({ cls: sel.value || null });
+    });
+
+    const termOf = (src) => (el) => {
+      const d = dash.data(src); const p = P();
+      const r = d.status === 'ok' && d.data.find((x) => x.grade === p.grade && x.cls === '全教室');
+      if (!r) return reset(el);
+      el.textContent = r.term;
+    };
+    dash.draw(k + '-ws-term', termOf(C.ws));
+    dash.draw(k + '-cls-term', termOf(C.cls));
+
+    dash.draw(k + '-cls-table', (tb) => {
+      const d = dash.data(C.cls); const p = P();
+      tb.replaceChildren();
+      if (d.status !== 'ok') return;
+      const rows = d.data.filter((r) => r.grade === p.grade).sort((a, b) => (a.cls === '全教室' ? -1 : b.cls === '全教室' ? 1 : b.avg5 - a.avg5));
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.dataset.cls = r.cls;
+        if (r.cls === '全教室') tr.className = 'total';
+        if (r.cls === p.cls && r.cls !== '全教室') tr.classList.add('sel');
+        const lo = Math.min(...FIVE.map((s) => r[s])), hi = Math.max(...FIVE.map((s) => r[s]));
+        const cells = [[r.cls], [r.n], [C.avg5Fmt(r.avg5)], [r.delta5 == null ? '' : C.d5Fmt(r.delta5), r.delta5 > 0 ? 'up' : r.delta5 < 0 ? 'down' : ''],
+          ...FIVE.map((s) => [C.subFmt(r[s]), lo !== hi && r[s] === lo ? 'weak' : lo !== hi && r[s] === hi ? 'strong' : ''])];
+        for (const [t, c] of cells) { const td = document.createElement('td'); td.textContent = t; if (c) td.className = c; tr.appendChild(td); }
+        tb.appendChild(tr);
+      }
+    });
+
+    dash.draw(k + '-trend', (el) => {
+      el.replaceChildren();
+      const d = dash.data(C.avg);
+      el.classList.toggle('dash-skeleton', d.status === 'loading');
+      if (d.status !== 'ok') return;
+      const p = P(); const subs = C.trendSubjects(p);
+      const rows = d.data.filter((r) => r.grade === p.grade && r.cls === p.cls && subs.includes(r.subject));
+      const terms = [...new Map(rows.map((r) => [r.term_no, r.term])).entries()].sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+      if (!terms.length) return;
+      const W = el.clientWidth || 600, H = 300;
+      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+      const e = d3.extent(rows, (r) => r.mean);
+      const pad = k === 'n' ? 0.1 : 2;
+      const step0 = k === 'n' ? 5 : 0.2;
+      const yd = [Math.floor((e[0] - pad) * step0) / step0, Math.ceil((e[1] + pad) * step0) / step0];
+      const y = d3.scaleLinear(yd, [H - 28, 12]);
+      const ticks = y.ticks(5);
+      const tf = k === 'n' ? f2 : d3.format('d');
+      const lw = d3.max(ticks, (t) => measure(svg, tf(t)));
+      const endW = d3.max(subs, (s) => measure(svg, s + ' ' + C.fmt(88.8))) + 12;
+      const left = lw + 10, right = W - endW;
+      const tw = d3.max(terms, (t) => measure(svg, t));
+      const x = d3.scalePoint(terms, [left + 16, Math.max(left + 40, right - 8)]);
+      const g = svg.append('g');
+      g.selectAll('line').data(ticks).join('line').attr('x1', left).attr('x2', right).attr('y1', y).attr('y2', y).attr('stroke', 'var(--cds-chart-grid)');
+      g.selectAll('text').data(ticks).join('text').attr('x', left - 6).attr('y', (t) => y(t)).attr('dy', '0.32em').attr('text-anchor', 'end').text((t) => tf(t));
+      const step = terms.length > 1 ? x(terms[1]) - x(terms[0]) : 999;
+      const every = Math.max(1, Math.ceil((tw + 8) / step));
+      const shown = terms.filter((_, i) => i % every === 0 && (i + every < terms.length || i === terms.length - 1 || every === 1));
+      if (!shown.includes(terms[terms.length - 1])) shown.push(terms[terms.length - 1]);
+      svg.append('g').selectAll('text').data(shown).join('text').attr('x', (t) => x(t)).attr('y', H - 8).attr('text-anchor', 'middle').text((t) => t);
+      const line = d3.line().x((r) => x(r.term)).y((r) => y(r.mean));
+      const ends = [];
+      for (const s of subs) {
+        const rs = rows.filter((r) => r.subject === s).sort((a, b) => a.term_no - b.term_no);
+        if (!rs.length) continue;
+        svg.append('path').datum(rs).attr('d', line).attr('fill', 'none').attr('stroke', colorOf(s)).attr('stroke-width', 2).attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round');
+        svg.append('g').selectAll('circle').data(rs).join('circle').attr('cx', (r) => x(r.term)).attr('cy', (r) => y(r.mean)).attr('r', 3).attr('fill', colorOf(s));
+        const last = rs[rs.length - 1];
+        ends.push({ s, v: last.mean, y: y(last.mean), x: x(last.term) });
+      }
+      ends.sort((a, b) => a.y - b.y);
+      for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 14) ends[i].y = ends[i - 1].y + 14;
+      svg.append('g').selectAll('text').data(ends).join('text').attr('x', (e2) => e2.x + 8).attr('y', (e2) => e2.y).attr('dy', '0.32em').style('fill', (e2) => colorOf(e2.s)).text((e2) => e2.s + ' ' + C.fmt(e2.v));
+      const tip = tipIn(el);
+      const rule = svg.append('line').attr('y1', 12).attr('y2', H - 28).attr('stroke', 'var(--cds-chart-reference)').style('display', 'none');
+      svg.append('rect').attr('x', left).attr('y', 0).attr('width', Math.max(0, right - left)).attr('height', H - 20).attr('fill', 'transparent')
+        .on('pointermove', (ev) => {
+          const [mx] = d3.pointer(ev);
+          const t = terms.reduce((a, b) => (Math.abs(x(b) - mx) < Math.abs(x(a) - mx) ? b : a));
+          rule.attr('x1', x(t)).attr('x2', x(t)).style('display', null);
+          const here = subs.map((s) => rows.find((r) => r.subject === s && r.term === t)).filter(Boolean);
+          tipLine(tip, t + `（${d3.max(here, (r) => r.n) || 0}人）`, here.map((r) => [colorOf(r.subject), `${r.subject}　${C.fmt(r.mean)}${C.unit}`]));
+          place(el, tip, (x(t) / W) * el.clientWidth, 40);
+        })
+        .on('pointerleave', () => { tip.hidden = true; rule.style('display', 'none'); });
+    });
+
+    dash.draw(k + '-dist', (el) => {
+      el.replaceChildren();
+      el.classList.toggle('dash-skeleton', dash.data(C.avg).status === 'loading');
+      const c = cur();
+      if (!c) return;
+      const rows = C.distSubjects.map((s) => c.rows.find((r) => r.subject === s)).filter(Boolean);
+      if (!rows.length) return;
+      const W = el.clientWidth || 400, rowH = 26, H = rows.length * rowH + 10;
+      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+      const lw = d3.max(rows, (r) => measure(svg, r.subject)) + 10;
+      const x = d3.scaleLinear([0, 100], [lw, W - 4]);
+      const tip = tipIn(el);
+      rows.forEach((r, i) => {
+        const yy = i * rowH + (i >= 5 ? 6 : 0);
+        svg.append('text').attr('x', lw - 8).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end').attr('class', 'strong').text(r.subject);
+        const tot = C.segs.reduce((t, s) => t + r[s[0]], 0) || 1;
+        let acc = 0;
+        C.segs.forEach(([f, col, op], si) => {
+          const v = (r[f] / tot) * 100;
+          const x0 = x(acc), w = x(acc + v) - x0;
+          acc += v;
+          if (w <= 0) return;
+          svg.append('rect').attr('x', x0).attr('y', yy + 4).attr('width', Math.max(0, w - 1)).attr('height', rowH - 8).attr('fill', col === 0 ? dash.colors[0] : col).attr('fill-opacity', op);
+          if (w > 30) svg.append('text').attr('x', x0 + w / 2).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'middle')
+            .style('fill', si === 1 || si === 2 ? 'var(--color-fg)' : 'var(--color-bg)').text(r[f] + '%');
+        });
+        svg.append('rect').attr('x', lw).attr('y', yy).attr('width', W - lw).attr('height', rowH).attr('fill', 'transparent')
+          .on('pointermove', (ev) => {
+            const [mx, my] = d3.pointer(ev, el);
+            tipLine(tip, `${r.subject}（${r.n}人・${C.meanLab}${C.fmt(r.mean)}${C.unit}）`, C.segs.map(([f, , , lab]) => [null, `${lab}：${r[f]}%`]));
+            place(el, tip, mx, my);
+          }).on('pointerleave', () => { tip.hidden = true; });
+      });
+    });
+
+    dash.draw(k + '-change', (el) => {
+      el.replaceChildren();
+      const d = dash.data(C.change);
+      el.classList.toggle('dash-skeleton', d.status === 'loading');
+      if (d.status !== 'ok') return;
+      const p = P();
+      const rows = C.changeSubjects.map((s) => d.data.find((r) => r.grade === p.grade && r.cls === p.cls && r.subject === s)).filter(Boolean);
+      if (!rows.length) return;
+      const W = el.clientWidth || 400, rowH = 26, H = rows.length * rowH + 30;
+      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+      const lw = d3.max(rows, (r) => measure(svg, r.subject)) + 10;
+      const rw = d3.max(rows, (r) => measure(svg, C.dfmt(r.delta))) + 12;
+      const m = Math.max(10, d3.max(rows, (r) => Math.max(r.up_pct, r.down_pct)));
+      const x = d3.scaleLinear([-m, m], [lw, W - rw]);
+      svg.append('text').attr('x', x(-m)).attr('y', 10).text(`↓ ${rows[0].from_term}→${rows[0].to_term}`);
+      svg.append('text').attr('x', x(m)).attr('y', 10).attr('text-anchor', 'end').text('↑');
+      svg.append('line').attr('x1', x(0)).attr('x2', x(0)).attr('y1', 18).attr('y2', H).attr('stroke', 'var(--cds-chart-axis)');
+      const tip = tipIn(el);
+      rows.forEach((r, i) => {
+        const yy = 20 + i * rowH + (r.subject === '5科合計' ? 4 : 0);
+        svg.append('text').attr('x', lw - 8).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end').attr('class', 'strong').text(r.subject);
+        svg.append('rect').attr('x', x(-r.down_pct)).attr('y', yy + 5).attr('width', x(0) - x(-r.down_pct)).attr('height', rowH - 10).attr('rx', 2).attr('fill', CRIT);
+        svg.append('rect').attr('x', x(0)).attr('y', yy + 5).attr('width', x(r.up_pct) - x(0)).attr('height', rowH - 10).attr('rx', 2).attr('fill', dash.colors[0]);
+        svg.append('text').attr('x', W - 2).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end')
+          .style('fill', r.delta > 0 ? 'var(--color-ok)' : r.delta < 0 ? 'var(--color-bad)' : 'var(--color-fg-muted)').text(C.dfmt(r.delta));
+        svg.append('rect').attr('x', lw).attr('y', yy).attr('width', W - lw).attr('height', rowH).attr('fill', 'transparent')
+          .on('pointermove', (ev) => {
+            const [mx, my] = d3.pointer(ev, el);
+            tipLine(tip, `${r.subject}（${r.n}人）`, [[null, `${C.upLab} ${r.up}人（${r.up_pct}%）`], [null, `${C.sameLab} ${r.same}人`], [null, `${C.downLab} ${r.down}人（${r.down_pct}%）`], [null, `${C.meanLab}の変化 ${C.dfmt(r.delta)}`]]);
+            place(el, tip, mx, my);
+          }).on('pointerleave', () => { tip.hidden = true; });
+      });
+    });
+
+    dash.draw(k + '-ws', (el) => {
+      el.replaceChildren();
+      const d = dash.data(C.ws);
+      el.classList.toggle('dash-skeleton', d.status === 'loading');
+      if (d.status !== 'ok') return;
+      const p = P();
+      const rows = FIVE.map((s) => d.data.find((r) => r.grade === p.grade && r.cls === p.cls && r.subject === s)).filter(Boolean);
+      if (!rows.length) return;
+      const W = el.clientWidth || 600, rowH = 32, H = rows.length * rowH + 26;
+      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+      const lab = 40, mid = W / 2;
+      const m = Math.max(20, d3.max(rows, (r) => Math.max(r.weak_pct, r.strong_pct)));
+      const xl = d3.scaleLinear([0, m], [mid - lab, 34]);
+      const xr = d3.scaleLinear([0, m], [mid + lab, W - 34]);
+      svg.append('text').attr('x', mid - lab).attr('y', 10).attr('text-anchor', 'end').text(`苦手（${rows[0].students}人中）`);
+      svg.append('text').attr('x', mid + lab).attr('y', 10).text('得意');
+      const tip = tipIn(el);
+      rows.forEach((r, i) => {
+        const yy = 18 + i * rowH;
+        svg.append('text').attr('x', mid).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'middle').attr('class', 'strong').text(r.subject);
+        svg.append('rect').attr('x', xl(r.weak_pct)).attr('y', yy + 6).attr('width', xl(0) - xl(r.weak_pct)).attr('height', rowH - 12).attr('rx', 2).attr('fill', CRIT);
+        svg.append('text').attr('x', xl(r.weak_pct) - 4).attr('y', yy + rowH / 2).attr('dy', '0.32em').attr('text-anchor', 'end').text(r.weak_pct + '%');
+        svg.append('rect').attr('x', xr(0)).attr('y', yy + 6).attr('width', xr(r.strong_pct) - xr(0)).attr('height', rowH - 12).attr('rx', 2).attr('fill', dash.colors[0]);
+        svg.append('text').attr('x', xr(r.strong_pct) + 4).attr('y', yy + rowH / 2).attr('dy', '0.32em').text(r.strong_pct + '%');
+        svg.append('rect').attr('x', 0).attr('y', yy).attr('width', W).attr('height', rowH).attr('fill', 'transparent')
+          .on('pointermove', (ev) => {
+            const [mx, my] = d3.pointer(ev, el);
+            tipLine(tip, `${r.subject}（${r.term}）`, [[null, `苦手としている生徒 ${r.weak_pct}%`], [null, `得意としている生徒 ${r.strong_pct}%`], [null, `対象 ${r.students}人（うち5教科とも同じ ${r.flat}人）`]]);
+            place(el, tip, mx, my);
+          }).on('pointerleave', () => { tip.hidden = true; });
+      });
+    });
+  }
+})();
+
+(() => {
+  const FIVE = ['国語', '社会', '数学', '理科', '英語'];
+  const P = () => {
+    const p = dash.params();
+    return { grade: p.grade || '中3', cls: p.cls || '全教室', csrc: p.csrc === 'ct' ? 'ct' : 'c', line: [60, 70, 80].includes(Number(p.line)) ? Number(p.line) : 70 };
+  };
+  const reset = (el) => { el.textContent = '—'; };
+  const pct = d3.format('.1f');
+  document.querySelectorAll('.tsx .sw-ok').forEach((e) => { e.style.background = dash.colors[0]; });
+
+  document.querySelectorAll('.tsx [data-csrcbtn]').forEach((b) => b.addEventListener('click', () => dash.setParams({ csrc: b.dataset.csrcbtn })));
+  document.querySelectorAll('.tsx [data-line]').forEach((b) => b.addEventListener('click', () => dash.setParams({ line: Number(b.dataset.line) })));
+  dash.onData(() => {
+    const p = P();
+    document.querySelectorAll('.tsx [data-csrcbtn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.csrcbtn === p.csrc)));
+    document.querySelectorAll('.tsx .cblock[data-csrc]').forEach((s) => { s.hidden = s.dataset.csrc !== p.csrc; });
+    document.querySelectorAll('.tsx [data-line]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.line) === p.line)));
+  });
+
+  const CFG = [
+    { k: 'c', cand: 'cand', cls: 'cand_cls', line: false },
+    { k: 'ct', cand: 't_cand', cls: 't_cand_cls', line: true },
+  ];
+
+  for (const C of CFG) {
+    const k = C.k;
+    const keep = (r, p) => r.grade === p.grade && (!C.line || r.line === p.line);
+    const rowsNow = () => {
+      const d = dash.data(C.cand); if (d.status !== 'ok') return null;
+      const p = P();
+      return d.data.filter((r) => keep(r, p) && r.cls === p.cls && FIVE.includes(r.subject))
+        .sort((a, b) => b.cand - a.cand || b.low_pct - a.low_pct);
+    };
+    const top = () => { const r = rowsNow(); return r && r.length ? r[0] : null; };
+
+    dash.draw(k + '-grade', (el) => { el.textContent = P().grade; });
+    dash.draw(k + '-cls', (el) => { el.textContent = P().cls; });
+    dash.draw(k + '-period', (el) => { const r = top(); if (!r) return reset(el); el.textContent = r.period; });
+    dash.draw(k + '-top', (el) => { const r = top(); if (!r) return reset(el); el.textContent = r.subject; });
+    dash.draw(k + '-top-n', (el) => { const r = top(); if (!r) return reset(el); el.textContent = d3.format(',')(r.cand); });
+    dash.draw(k + '-top-pct', (el) => { const r = top(); if (!r) return reset(el); el.textContent = pct(r.cand_pct); });
+    if (C.line) for (const n of ['a', 'b', 'c']) dash.draw(k + '-line-' + n, (el) => { el.textContent = String(P().line); });
+    dash.draw(k + '-times-a', (el) => { const r = top(); el.textContent = r && r.times === 1 ? '直近の1回で' : '2回とも'; });
+    dash.draw(k + '-times-b', (el) => { const r = top(); el.textContent = r && r.times === 1 ? '成績がある生徒' : '2回分そろった生徒'; });
+    dash.draw(k + '-top-ref', (el) => {
+      const r = top();
+      el.textContent = r && r.times >= 2 ? `このほか、1回分しかない生徒が ${d3.format(',')(r.one)}名で、そのうち基準を下回った生徒（参考）が ${d3.format(',')(r.ref)}名います。` : '';
+    });
+
+    dash.draw(k + '-cls-pick', (sel) => {
+      const d = dash.data(C.cls); const p = P();
+      const names = d.status === 'ok' ? [...new Set(d.data.filter((r) => keep(r, p) && r.cls !== '全教室').map((r) => r.cls))].sort((a, b) => a.localeCompare(b, 'ja')) : [];
+      if (p.cls !== '全教室' && !names.includes(p.cls)) names.unshift(p.cls);
+      sel.replaceChildren(new Option('全教室', ''), ...names.map((n) => new Option(n, n)));
+      sel.value = p.cls === '全教室' ? '' : p.cls;
+      sel.onchange = () => dash.setParams({ cls: sel.value || null });
+    });
+
+    dash.draw(k + '-rank', (el) => {
+      el.replaceChildren();
+      const rows = rowsNow();
+      el.classList.toggle('dash-skeleton', dash.data(C.cand).status === 'loading');
+      if (!rows || !rows.length) return;
+      const lineTxt = C.line ? P().line + '点' : '';
+      const max = d3.max(rows, (r) => r.cand) || 1;
+      rows.forEach((r, i) => {
+        const item = document.createElement('div');
+        item.className = 'rk' + (i === 0 ? ' first' : '');
+        const no = document.createElement('span'); no.className = 'rk-no'; no.textContent = String(i + 1);
+        const sub = document.createElement('span'); sub.className = 'rk-sub'; sub.textContent = r.subject;
+        const num = document.createElement('span'); num.className = 'rk-num';
+        const b = document.createElement('b'); b.textContent = d3.format(',')(r.cand);
+        const u = document.createElement('small'); u.textContent = `人（${pct(r.cand_pct)}%）` + (r.times >= 2 ? `／1回のみ ${d3.format(',')(r.one)}名・うち参考 ${d3.format(',')(r.ref)}名` : '');
+        num.append(b, u);
+        const people = document.createElement('div'); people.className = 'rk-people';
+        const pf = document.createElement('i'); pf.style.width = (r.cand / max) * 100 + '%'; people.appendChild(pf);
+        const bar = document.createElement('div'); bar.className = 'rk-bar';
+        const ok = document.createElement('span'); ok.className = 'ok'; ok.style.width = r.ok_pct + '%'; ok.style.background = dash.colors[0];
+        ok.textContent = r.ok_pct >= 18 ? `${C.line ? lineTxt + '以上' : '4以上'} ${pct(r.ok_pct)}%` : '';
+        const lo = document.createElement('span'); lo.className = 'lo'; lo.style.width = r.low_pct + '%';
+        lo.textContent = r.low_pct >= 18 ? `${C.line ? lineTxt + '未満' : '3以下'} ${pct(r.low_pct)}%` : '';
+        bar.append(ok, lo);
+        item.append(no, sub, num, people, bar);
+        el.appendChild(item);
+      });
+    });
+
+    dash.draw(k + '-cls-table', (tb) => {
+      const d = dash.data(C.cls); const p = P();
+      tb.replaceChildren();
+      if (d.status !== 'ok') return;
+      const rows = d.data.filter((r) => keep(r, p)).sort((a, b) => (a.cls === '全教室' ? -1 : b.cls === '全教室' ? 1 : b.total - a.total));
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.dataset.cls = r.cls;
+        if (r.cls === '全教室') tr.className = 'total';
+        if (r.cls === p.cls && r.cls !== '全教室') tr.classList.add('sel');
+        const hi = Math.max(...FIVE.map((s) => r[s] || 0));
+        const cells = [[r.cls], [r.students], ...FIVE.map((s) => [r[s] ?? 0, hi > 0 && (r[s] || 0) === hi ? 'weak' : '']), [r.total], [r.ref]];
+        for (const [t, c] of cells) { const td = document.createElement('td'); td.textContent = t; if (c) td.className = c; tr.appendChild(td); }
+        tb.appendChild(tr);
+      }
+    });
+  }
+})();
+</script>
+
+<script>
+/* ===== 起動：合言葉の確認 → データ取得 → 描画 ===== */
+(() => {
+  const banner = document.getElementById('banner');
+  const gate = document.getElementById('gate');
+  const app = document.getElementById('app');
+  const say = (t, err) => { banner.hidden = !t; banner.textContent = t || ''; banner.className = err ? 'err' : ''; };
+  const call = (name, ...args) => new Promise((ok, ng) => {
+    if (!(window.google && google.script && google.script.run)) return ng(new Error('Apps Script 上で開いてください'));
+    google.script.run.withSuccessHandler(ok).withFailureHandler((e) => ng(new Error(e && e.message ? e.message : String(e))))[name](...args);
+  });
+  const load = async (code) => {
+    gate.hidden = true; app.hidden = false;
+    say('スプレッドシートからデータを読み込んでいます…（10〜20秒ほどかかります）');
+    dash._run();
+    try {
+      const raw = await call('getRaw', code);
+      try { sessionStorage.setItem('code', code || ''); } catch (e) {}
+      dash._set(raw);
+      say('');
+      dash._run();
+    } catch (e) {
+      if (/合言葉/.test(e.message)) { try { sessionStorage.removeItem('code'); } catch (x) {} return ask('合言葉が違います'); }
+      dash._fail(e.message);
+      say('データを読み込めませんでした：' + e.message, true);
+      dash._run();
+    }
+  };
+  const ask = (msg) => {
+    app.hidden = true; gate.hidden = false; say('');
+    document.getElementById('gate-msg').textContent = msg || '';
+    const go = () => load(document.getElementById('gate-input').value);
+    document.getElementById('gate-ok').onclick = go;
+    document.getElementById('gate-input').onkeydown = (e) => { if (e.key === 'Enter') go(); };
+  };
+  (async () => {
+    let need = false;
+    try { need = await call('needsCode'); } catch (e) {}
+    let saved = '';
+    try { saved = sessionStorage.getItem('code') || ''; } catch (e) {}
+    if (need && !saved) ask(''); else load(saved);
+  })();
+})();
+</script>
+</body>
+</html>
