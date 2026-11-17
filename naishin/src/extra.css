@@ -1,6 +1,6 @@
 /* ===== 内申点チェック用に足した部分 ===== */
 .pref { margin: 2px 0 4px; font-size: 13px; font-weight: 700; color: var(--mute); }
-.pref span { display: inline-block; background: var(--navy); color: #fff; border-radius: 8px; padding: 1px 8px; margin-right: 6px; }
+.pref span { display: inline-block; background: #f08a00; color: #fff; border-radius: 8px; padding: 1px 8px; margin-right: 6px; }
 .grades.g2 { grid-template-columns: 1fr 1fr; }
 .nosheet { background: var(--cream); color: var(--amber); font-weight: 700; font-size: 14px; border-radius: 14px; padding: 10px 14px; margin: 0 0 14px; }
 .mini { font-size: 13px; color: var(--mute); margin: 8px 0 0; }
@@ -67,3 +67,5 @@
 .tools { flex-wrap: wrap; }
 .tools .sort { flex: 1 1 100%; padding: 10px 12px; font-size: 15px; }
 .grp { font-size: 15px; font-weight: 900; color: var(--navy); margin: 16px 2px 8px; }
+.logo b { color: var(--blue); }
+.gt tr:first-child th, .band b { color: var(--navy); }
