@@ -191,7 +191,31 @@ function spAccounts_() {
     var rooms = val.slice(c + 1).split(/[、,，\/]/).map(function (x) { return x.trim(); }).filter(String);
     if (pw && rooms.length) list.push({ id: id, pass: pw, rooms: rooms });
   });
+  // 過去最高チェックの古い形（SP_LOGIN_ID・SP_LOGIN_PASS）も、全教室を見られるログインとして使える
+  if (all.SP_LOGIN_ID && all.SP_LOGIN_PASS) list.push({ id: String(all.SP_LOGIN_ID).trim(), pass: String(all.SP_LOGIN_PASS), rooms: ['全教室'] });
   return list;
+}
+
+/**
+ * 過去最高チェック（スマホ版）のログインを、まとめてこのアプリに写す。
+ * 1. 過去最高チェックのエディタで exportLogins を実行し、ログに出た1行（{"SP_USER_…}）をコピーする
+ * 2. このアプリの「スクリプト プロパティ」に、プロパティ NS_IMPORT、値に1でコピーした1行を貼って保存する
+ * 3. このエディタで importLogins を実行する（NS_IMPORT は自動で消える）
+ * 何度実行してもよい（同じIDは上書き）。過去最高チェックで消したIDは、ここでは消えないので手で消す。
+ */
+function importLogins() {
+  var props = PropertiesService.getScriptProperties();
+  var raw = props.getProperty('NS_IMPORT');
+  if (!raw) { Logger.log('スクリプト プロパティ NS_IMPORT がありません'); return; }
+  var obj;
+  try { obj = JSON.parse(raw); } catch (e) { Logger.log('NS_IMPORT の形が違います（ログの1行をそのまま貼ってください）'); return; }
+  var add = {}, n = 0;
+  Object.keys(obj).forEach(function (k) {
+    if (k.indexOf('SP_USER_') === 0 || k === 'SP_LOGIN_ID' || k === 'SP_LOGIN_PASS') { add[k] = String(obj[k]); if (k.indexOf('SP_USER_') === 0) n++; }
+  });
+  props.setProperties(add);
+  props.deleteProperty('NS_IMPORT');
+  Logger.log('写したログイン：' + n + '人（今の登録：' + spAccounts_().length + '件）');
 }
 
 /** ログインの教室（例：滝尾SP）が、生徒の教室（例：滝尾P）に当たるか。SP は S と P の両方。 */
