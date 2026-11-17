@@ -302,8 +302,10 @@
       base = bases[0]; course = ns(w).slice(base.length);
     }
     base = ns(base);
+    // 「文情」→「文科情報」のように、字の順がそろえば略し方とみなす
+    const sub = (a, b) => { let i = 0; for (const ch of b) if (ch === a[i]) i++; return a.length >= 2 && i === a.length; };
     const same = list.filter((x) => ns(x.name.split(/[\s　]/)[0]) === base);
-    const withCourse = same.find((x) => { const c = ns(x.name).slice(base.length); return c && course && (c.startsWith(course) || course.startsWith(c)); });
+    const withCourse = same.find((x) => { const c = ns(x.name).slice(base.length); return c && course && (c.startsWith(course) || course.startsWith(c) || sub(course, c)); });
     return withCourse || same.find((x) => ns(x.name) === base) || null;
   };
   // 最初に入れておく目標：第一志望校（基準点がなければ第二志望校）
