@@ -33,7 +33,7 @@
     const base = 2.4 + rnd() * 2.6;
     const g3 = i < 25;
     const s = { pref: '宮崎', grade: g3 ? '中3' : '中2', id: 'mz' + i, name: pick(fam) + ' ' + pick(giv), room: mrooms[i % 2], school: '宮崎見本中',
-      wish1: pick(['宮崎西', '宮崎大宮', '宮崎南', '宮崎北', '']), wish2: '', t1: term(base), t21: term(base), t22: term(base), t2: g3 ? term(base) : none(), t31: g3 ? term(base) : none(), t32: g3 && i % 5 === 0 ? term(base) : none() };
+      wish1: pick(['宮崎西', '宮崎大宮', '宮崎南', '宮崎北', '']), wish2: pick(['宮崎南', '妻', '宮崎商業', '']), t1: term(base), t21: term(base), t22: term(base), t2: g3 ? term(base) : none(), t31: g3 ? term(base) : none(), t32: g3 && i % 5 === 0 ? term(base) : none() };
     if (i % 9 === 4) s.t1 = none();
     students.push(s);
   }
@@ -41,12 +41,14 @@
   for (let i = 0; i < 20; i++) {
     const base = 2.4 + rnd() * 2.6;
     const s = { pref: '福岡', grade: '中3', id: 'fk' + i, name: pick(fam) + ' ' + pick(giv), room: '見本教室F', school: '福津見本中',
-      wish1: pick(['宗像', '福岡', '修猷館', '']), wish2: '', t1: term(base), t21: term(base), t22: term(base), t2: term(base), t31: i % 7 === 3 ? none() : term(base), t32: i % 4 === 0 ? term(base) : none() };
+      wish1: pick(['宗像', '福岡', '修猷館', '春日', '']), wish2: pick(['香椎', '新宮', '']), t1: term(base), t21: term(base), t22: term(base), t2: term(base), t31: i % 7 === 3 ? none() : term(base), t32: i % 4 === 0 ? term(base) : none() };
     students.push(s);
   }
   const data = {
     students, noSheet: [],
-    schools: { 福岡: [], 宮崎: [], 大分: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })) },
+    schools: {
+      福岡: [['修猷館', 42], ['福岡', 42], ['筑紫丘', 40], ['城南', 38], ['春日', 38], ['筑紫', 36], ['宗像', 36], ['香住丘', 36], ['新宮', 34], ['香椎', 31], ['須恵', 24]].map(([name, score]) => ({ name, score })),
+      宮崎: [['宮崎大宮', 117], ['宮崎西', 108], ['妻', 102], ['佐土原', 96], ['宮崎南', 90], ['宮崎商業', 81]].map(([name, score]) => ({ name, score })), 大分: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })) },
     alias: { 福岡: {}, 宮崎: {}, 大分: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' } },
     info: { all: true, rooms: [], at: '試し版' },
   };
