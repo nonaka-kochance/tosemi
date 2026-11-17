@@ -69,3 +69,8 @@
 .grp { font-size: 15px; font-weight: 900; color: var(--navy); margin: 16px 2px 8px; }
 .logo b { color: var(--blue); }
 .gt tr:first-child th, .band b { color: var(--navy); }
+.pref i { font-style: normal; }
+.prefs { margin: 10px 0 0; }
+.prefs button[aria-pressed="true"] { background: #f08a00; border-color: #f08a00; }
+/* 点取くん（合格祈願の絵馬）は余白が多いので、過去最高チェックより少し大きく */
+.gate-head .tentori { width: clamp(104px, 33vw, 142px); height: clamp(104px, 33vw, 142px); margin: -10px -10px -8px 0; }

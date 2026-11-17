@@ -1,5 +1,5 @@
 /**
- * 内申点チェック（大分・260点満点）スマホ用の Webアプリ
+ * 内申点チェック（大分260点満点・宮崎135点満点）スマホ用の Webアプリ
  *
  * データ元：Googleスプレッドシート「内申点チェック（自動更新）」のタブ「中3」「中2」（同じ列の形）。
  *   1行目：時期（中1\n学年末、中2\n学年末、中3\n1学期、中3\n2学期 など）
@@ -17,16 +17,22 @@ var GRADE_SHEETS = { 中3: '中3', 中2: '中2' };
 // 生徒の志望校の列の見出し（左から順に探す）
 var WISH1_HEADERS = ['第一志望校', '案1'];
 var WISH2_HEADERS = ['第二志望校', '案2'];
-// 志望校の略し方 → 「基準」タブの高校名。略し方が増えたら、ここに足す
-var WISH_ALIAS = { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' };
-// 志望校の基準点のタブ（見出し「高校名」「基準点」）。なくても動く（志望校を選ぶ欄が出ないだけ）
-var GOAL_SHEET = '基準';
-
-// 大分の生徒だけを使う。中学校の列は「市町村名＋学校名」（例：大分王子、別府明豊）なので、
-// 先頭が大分県の市町村名の生徒を大分とする。宮崎・福岡を作るときはここを変える
-var PREF_CITIES = ['大分', '別府', '中津', '日田', '佐伯', '臼杵', '津久見', '竹田', '豊後高田', '杵築', '宇佐', '豊後大野', '由布', '国東', '姫島', '日出', '九重', '玖珠'];
-// 宮崎県の市町村で、大分県の市町村名と先頭が同じになるものはない（念のため、ここに書いたものは大分から外す）
-var NOT_PREF = [];
+// 県ごとの設定。中学校の列は「市町村名＋学校名」（例：大分王子、別府明豊、宮崎宮崎西附属）なので、先頭の市町村名で県を決める。
+//   goal：志望校の基準点のタブ（見出し「高校名」「基準点」）。なくても動く（志望校を選ぶ欄が出ないだけ）
+//   alias：志望校の略し方 → 基準点のタブの高校名。略し方が増えたら、ここに足す
+// 福岡を足すときは、ここと画面（Index）の RULES の両方に書く
+var PREFS = {
+  大分: {
+    cities: ['大分', '別府', '中津', '日田', '佐伯', '臼杵', '津久見', '竹田', '豊後高田', '杵築', '宇佐', '豊後大野', '由布', '国東', '姫島', '日出', '九重', '玖珠'],
+    goal: '基準',
+    alias: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' }
+  },
+  宮崎: {
+    cities: ['宮崎', '都城', '延岡', '日南', '小林', '日向', '串間', '西都', 'えびの', '三股', '高原', '国富', '綾', '高鍋', '新富', '西米良', '木城', '川南', '都農', '門川', '諸塚', '椎葉', '美郷', '高千穂', '日之影', '五ヶ瀬'],
+    goal: '基準（宮崎）',
+    alias: {}
+  }
+};
 
 // 中高一貫校（公立高校入試の内申点の対象外として外す）。過去最高チェックと同じ一覧（中学校の列と完全に一致したら外す）
 var IKKAN = ['大分豊府', '大分岩田', '大分向陽', '大分大分', '宮崎日本大学', '宮崎宮崎学園', '宮崎宮崎西附属', '宮崎宮崎第一', '別府明豊', '宮崎日向学院',
@@ -75,17 +81,18 @@ function isExcluded_(school) {
   return IKKAN.indexOf(norm_(school)) >= 0;
 }
 
-/** 中学校の列から、大分県の生徒か。市町村名は長いものから比べる（豊後高田と豊後大野など）。 */
-function cityOf_(school) {
-  var s = norm_(school);
-  var list = PREF_CITIES.slice().sort(function (a, b) { return b.length - a.length; });
-  for (var i = 0; i < list.length; i++) if (s.indexOf(list[i]) === 0) return list[i];
-  return '';
+/** 中学校の列から県を決める（大分・宮崎、どちらでもなければ空）。市町村名は長いものから比べる（豊後高田と豊後大野など）。 */
+function prefOf_(school) {
+  var s = norm_(school), best = '', len = 0;
+  Object.keys(PREFS).forEach(function (p) {
+    PREFS[p].cities.forEach(function (c) { if (c.length > len && s.indexOf(c) === 0) { best = p; len = c.length; } });
+  });
+  return best;
 }
 
 /**
- * 学年ごとのタブを読み、大分の生徒（中高一貫校を除く）について、計算に必要な値だけを返す。
- * 返す形：{ students: [{ grade, id, name, room, school, t1:[9], t21, t22, t2, t31, t32 }], excluded: 一貫校の人数, other: 大分以外の学校名の先頭2文字, noSheet: [タブがない学年] }
+ * 学年ごとのタブを読み、大分・宮崎の生徒（中高一貫校を除く）について、計算に必要な値だけを返す。
+ * 返す形：{ students: [{ pref, grade, id, name, room, school, t1:[9], t21, t22, t2, t31, t32 }], excluded: 一貫校の人数, other: 大分・宮崎以外の学校名の先頭2文字, noSheet: [タブがない学年] }
  * 評定の並びは SUBJECTS の順（国・社・数・理・英・体・音・美・家）。未入力は null。
  */
 function getStudents_() {
@@ -131,9 +138,10 @@ function readSheet_(sheet, grade, res) {
     if (!id && !nm) continue;
     if (id.charAt(0) === '#' && !nm) continue;
     var school = String(row[cSchool] || '').trim();
-    if (!cityOf_(school) || NOT_PREF.indexOf(norm_(school)) >= 0) { res.other.push(norm_(school).slice(0, 2)); continue; }
+    var pref = prefOf_(school);
+    if (!pref) { res.other.push(norm_(school).slice(0, 2)); continue; }
     if (isExcluded_(school)) { res.excluded++; continue; }
-    var s = { grade: grade, id: id, name: nm, room: shortRoom_(row[cRoom]), school: school,
+    var s = { pref: pref, grade: grade, id: id, name: nm, room: shortRoom_(row[cRoom]), school: school,
       wish1: cWish1 >= 0 ? String(row[cWish1] || '').trim() : '', wish2: cWish2 >= 0 ? String(row[cWish2] || '').trim() : '' };
     Object.keys(cols).forEach(function (k) {
       s[k] = cols[k] ? cols[k].map(function (c) { return grade_(row[c]); }) : SUBJECTS.map(function () { return null; });
@@ -146,8 +154,8 @@ function readSheet_(sheet, grade, res) {
  * 「基準」タブから、高校名と基準点（例：240点）を読む。並びはタブの順のまま。
  * 返す形：[{ name: '上野丘', score: 240 }, ...]
  */
-function getSchools_() {
-  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(GOAL_SHEET);
+function getSchools_(tab) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(tab);
   if (!sheet) return [];
   var v = sheet.getDataRange().getDisplayValues();
   var cName = -1, cScore = -1, r0 = -1;
@@ -229,8 +237,8 @@ function getNaishinSP(id, pass) {
       return hit.rooms.some(function (w) { return roomMatch_(w, s.room); });
     });
   }
-  data.schools = getSchools_();
-  data.alias = WISH_ALIAS;
+  data.schools = {}; data.alias = {};
+  Object.keys(PREFS).forEach(function (p) { data.schools[p] = getSchools_(PREFS[p].goal); data.alias[p] = PREFS[p].alias; });
   data.info = { all: all, rooms: all ? [] : hit.rooms.map(shortRoom_), at: Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d H:mm') };
   return data;
 }
@@ -240,22 +248,26 @@ function selfTest() {
   Logger.log('今のアカウントは東セミのアカウントと判定：' + isStaff_());
   Logger.log('ログインの登録：' + spAccounts_().length + '件');
   var d = getStudents_();
-  var sc = getSchools_();
-  Logger.log('志望校の基準点：' + JSON.stringify(sc));
-  // 第一志望校のうち、「基準」タブで見つからない書き方（人数）。よく出るものは WISH_ALIAS か「基準」タブに足す
-  var names = {}; sc.forEach(function (x) { names[x.name] = true; });
-  var miss = {};
-  getStudents_().students.forEach(function (s) {
-    var w = s.wish1; if (!w) return;
-    if (!names[w] && !names[WISH_ALIAS[w]]) miss[w] = (miss[w] || 0) + 1;
+  var all = d.students;
+  Object.keys(PREFS).forEach(function (p) {
+    var sc = getSchools_(PREFS[p].goal), al = PREFS[p].alias;
+    Logger.log(p + 'の志望校の基準点（タブ「' + PREFS[p].goal + '」）：' + JSON.stringify(sc));
+    // 第一志望校のうち、基準点のタブで見つからない書き方（人数）。よく出るものは alias か基準点のタブに足す
+    var names = {}; sc.forEach(function (x) { names[x.name] = true; });
+    var miss = {};
+    all.forEach(function (s) {
+      var w = s.wish1; if (s.pref !== p || !w) return;
+      if (!names[w] && !names[al[w]]) miss[w] = (miss[w] || 0) + 1;
+    });
+    Logger.log(p + 'の第一志望校で基準点がない書き方：' + JSON.stringify(miss));
   });
-  Logger.log('第一志望校で基準点がない書き方：' + JSON.stringify(miss));
-  Logger.log('大分の生徒：' + d.students.length + '人（中高一貫校で外した生徒：' + d.excluded + '人）');
+  var byPref = {}; d.students.forEach(function (s) { byPref[s.pref] = (byPref[s.pref] || 0) + 1; });
+  Logger.log('県ごとの人数：' + JSON.stringify(byPref) + '（中高一貫校で外した生徒：' + d.excluded + '人）');
   if (d.noSheet.length) Logger.log('タブが未設定の学年：' + d.noSheet.join('、'));
   var rooms = {};
-  d.students.forEach(function (s) { var k = s.grade + ' ' + s.room; rooms[k] = (rooms[k] || 0) + 1; });
+  d.students.forEach(function (s) { var k = s.pref + ' ' + s.grade + ' ' + s.room; rooms[k] = (rooms[k] || 0) + 1; });
   Logger.log('教室ごとの人数：' + JSON.stringify(rooms));
   var other = {};
   d.other.forEach(function (x) { other[x || '（中学校が空）'] = (other[x || '（中学校が空）'] || 0) + 1; });
-  Logger.log('大分以外として外した生徒（中学校の先頭2文字ごとの人数）：' + JSON.stringify(other));
+  Logger.log('大分・宮崎以外として外した生徒（中学校の先頭2文字ごとの人数）：' + JSON.stringify(other));
 }

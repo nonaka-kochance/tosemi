@@ -188,6 +188,11 @@ button { cursor: pointer; }
 .grp { font-size: 15px; font-weight: 900; color: var(--navy); margin: 16px 2px 8px; }
 .logo b { color: var(--blue); }
 .gt tr:first-child th, .band b { color: var(--navy); }
+.pref i { font-style: normal; }
+.prefs { margin: 10px 0 0; }
+.prefs button[aria-pressed="true"] { background: #f08a00; border-color: #f08a00; }
+/* 点取くん（合格祈願の絵馬）は余白が多いので、過去最高チェックより少し大きく */
+.gate-head .tentori { width: clamp(104px, 33vw, 142px); height: clamp(104px, 33vw, 142px); margin: -10px -10px -8px 0; }
 .trial{background:#fff4dc;color:#b86a00;font-weight:800;font-size:13px;text-align:center;padding:8px 12px}
 </style>
 <script>
@@ -206,7 +211,7 @@ button { cursor: pointer; }
   const students = [];
   for (let i = 0; i < 60; i++) {
     const base = 2.4 + rnd() * 2.6;
-    const s = { grade: '中3', id: 'm3' + i, name: pick(fam) + ' ' + pick(giv), room: rooms[i % 3], school: pick(['大分見本中', '別府見本中']),
+    const s = { pref: '大分', grade: '中3', id: 'm3' + i, name: pick(fam) + ' ' + pick(giv), room: rooms[i % 3], school: pick(['大分見本中', '別府見本中']),
       wish1: pick(wishes), wish2: pick(wishes), t1: term(base), t21: term(base), t22: term(base), t2: term(base), t31: term(base), t32: none() };
     if (i % 6 === 0) s.t32 = term(base);            // 確定
     if (i % 15 === 1) s.t31 = none();               // 中3が入力漏れ
@@ -215,15 +220,25 @@ button { cursor: pointer; }
   }
   for (let i = 0; i < 40; i++) {
     const base = 2.4 + rnd() * 2.6;
-    const s = { grade: '中2', id: 'm2' + i, name: pick(fam) + ' ' + pick(giv), room: rooms[i % 3], school: '大分見本中',
+    const s = { pref: '大分', grade: '中2', id: 'm2' + i, name: pick(fam) + ' ' + pick(giv), room: rooms[i % 3], school: '大分見本中',
       wish1: pick(wishes), wish2: pick(wishes), t1: term(base), t21: term(base), t22: i % 3 ? term(base) : none(), t2: none(), t31: none(), t32: none() };
     if (i % 12 === 5) s.t1 = none();                // 中1学年末が入力漏れ
     students.push(s);
   }
+  // 宮崎（志望校の基準点はまだないので、目標点は自分で入れる）
+  const mrooms = ['見本教室M', '見本教室N'];
+  for (let i = 0; i < 40; i++) {
+    const base = 2.4 + rnd() * 2.6;
+    const g3 = i < 25;
+    const s = { pref: '宮崎', grade: g3 ? '中3' : '中2', id: 'mz' + i, name: pick(fam) + ' ' + pick(giv), room: mrooms[i % 2], school: '宮崎見本中',
+      wish1: pick(['宮崎西', '宮崎大宮', '宮崎南', '宮崎北', '']), wish2: '', t1: term(base), t21: term(base), t22: term(base), t2: g3 ? term(base) : none(), t31: g3 ? term(base) : none(), t32: g3 && i % 5 === 0 ? term(base) : none() };
+    if (i % 9 === 4) s.t1 = none();
+    students.push(s);
+  }
   const data = {
     students, noSheet: [],
-    schools: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })),
-    alias: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' },
+    schools: { 宮崎: [], 大分: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })) },
+    alias: { 宮崎: {}, 大分: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' } },
     info: { all: true, rooms: [], at: '試し版' },
   };
   const run = (ok) => ({ withSuccessHandler: (f) => run(f), withFailureHandler: () => run(ok), getNaishinSP: () => setTimeout(() => ok(JSON.parse(JSON.stringify(data))), 200) });
@@ -255,7 +270,11 @@ button { cursor: pointer; }
       </div>
       <button type="button" class="help-btn" id="help-btn">？ 見方</button>
     </header>
-    <p class="pref"><span>大分</span>260点満点（中1学年末＋中2学年末＋中3 2学期）</p>
+    <p class="pref"><span id="pref-tag">大分</span><i id="pref-txt"></i></p>
+    <div class="grades g2 prefs" id="prefs" role="group" aria-label="県" hidden>
+      <button type="button" data-p="大分">大分</button>
+      <button type="button" data-p="宮崎">宮崎</button>
+    </div>
     <select id="room-sel" aria-label="教室" hidden></select>
     <div class="grades g2" id="grades" role="group" aria-label="学年">
       <button type="button" data-g="中3">中3</button>
@@ -295,12 +314,8 @@ button { cursor: pointer; }
   <div id="help" hidden>
     <div class="sheet" role="dialog" aria-label="見方">
       <h2>見方</h2>
-      <h3>計算のしかた（大分・260点満点）</h3>
-      <ul>
-        <li><b>① 中1学年末</b>（65点）：5教科の合計 ＋ 実技4教科の合計×2</li>
-        <li><b>② 中2学年末</b>（65点）：5教科の合計 ＋ 実技4教科の合計×2</li>
-        <li><b>③ 中3 2学期</b>（130点）：5教科の合計×2 ＋ 実技4教科の合計×4</li>
-      </ul>
+      <h3 id="help-title">計算のしかた</h3>
+      <ul id="help-calc"></ul>
       <p>5教科は国・社・数・理・英、実技4教科は体育・音楽・美術・家庭科です。</p>
       <h3>確定・仮・入力漏れ</h3>
       <ul>
@@ -308,7 +323,7 @@ button { cursor: pointer; }
         <li><b>仮</b>：中3 2学期がまだなので、中3 1学期の評定を③として計算しています。</li>
         <li><b>中3が入力漏れ</b>：①②はあるのに、中3の通知表が入っていません。</li>
         <li><b>中1・中2が入力漏れ</b>：①か②が入っていません。合計は出しません。</li>
-        <li><b>最大</b>：③が満点（130点）だったときの合計です。</li>
+        <li><b>最大</b>：<span id="help-max"></span></li>
       </ul>
       <h3>中2（今のままの見込み）</h3>
       <ul>
@@ -318,16 +333,26 @@ button { cursor: pointer; }
       <h3>シミュレーション</h3>
       <p>生徒のカードを押すと、通知表の評定が見られます。仮・入力漏れ（中3）・見込み（中2）の生徒は、評定を入れて合計を試せます。目標点（志望校）を入れると、あと何点かが出ます。入れた評定は保存されません（ログアウトすると消えます）。</p>
       <h3>対象</h3>
-      <p>大分の中学校の中3生・中2生です。中高一貫校の生徒は外しています。</p>
+      <p>大分・宮崎の中学校の中3生・中2生です。中高一貫校の生徒は外しています。</p>
       <button type="button" class="more ghost" id="help-close">とじる</button>
     </div>
   </div>
 </div>
 <script>
-/* ===== 内申点チェック（大分・260点満点）の計算と画面 ===== */
+/* ===== 内申点チェック（大分・宮崎）の計算と画面 ===== */
 (() => {
   const SUBJ = ['国', '社', '数', '理', '英', '体', '音', '美', '家'];
-  const MAX = 260;
+  // 県ごとの計算。a＝①②（中1学年末・中2学年末）、b＝③（中3 2学期）。[5教科の倍率, 実技4教科の倍率]
+  const RULES = {
+    大分: { a: [1, 2], b: [2, 4], step: 20 },
+    宮崎: { a: [1, 1], b: [1, 1], step: 10 },
+  };
+  const rule = (p) => RULES[p] || RULES.大分;
+  const fullOf = (w) => 25 * w[0] + 20 * w[1];
+  const FA = (p) => fullOf(rule(p).a), FB = (p) => fullOf(rule(p).b);
+  const MAXOF = (p) => FA(p) * 2 + FB(p);
+  const how = (w) => (w[0] === w[1] ? '9教科の合計' + (w[0] > 1 ? '×' + w[0] : '') : '5教科の合計' + (w[0] > 1 ? '×' + w[0] : '') + '＋実技4教科の合計' + (w[1] > 1 ? '×' + w[1] : ''));
+  const howShort = (w) => (w[0] === w[1] ? '9教科' + (w[0] > 1 ? '×' + w[0] : '') : '5教科' + (w[0] > 1 ? '×' + w[0] : '') + '＋実技' + (w[1] > 1 ? '×' + w[1] : ''));
   const $ = (id) => document.getElementById(id);
   const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -338,10 +363,11 @@ button { cursor: pointer; }
   const any = (a) => !!a && a.some((x) => x != null);
   const s5 = (a) => a.slice(0, 5).reduce((p, x) => p + x, 0);
   const s4 = (a) => a.slice(5).reduce((p, x) => p + x, 0);
-  // ①② 中1学年末・中2学年末：5教科＋実技×2（65点）
-  const pA = (a) => (full(a) ? s5(a) + s4(a) * 2 : null);
-  // ③ 中3 2学期：5教科×2＋実技×4（130点）
-  const pB = (a) => (full(a) ? s5(a) * 2 + s4(a) * 4 : null);
+  const pW = (a, w) => (full(a) ? s5(a) * w[0] + s4(a) * w[1] : null);
+  // ①② 中1学年末・中2学年末（大分：5教科＋実技×2＝65点、宮崎：9教科＝45点）
+  const pA = (a, p) => pW(a, rule(p).a);
+  // ③ 中3 2学期（大分：5教科×2＋実技×4＝130点、宮崎：9教科＝45点）
+  const pB = (a, p) => pW(a, rule(p).b);
   // 新しい方を優先して、教科ごとに埋める（例：中3 2学期がない教科は中3 1学期）
   const merge = (newer, older) => newer.map((x, i) => (x != null ? x : older[i]));
 
@@ -352,20 +378,21 @@ button { cursor: pointer; }
    *  base2,base3：シミュレーションの最初の値（9教科）、sim2,sim3：②③を仮入力できるか、src2,src3：何の評定を使ったか
    */
   const calc = (s) => {
-    const r = { p1: pA(s.t1), p2: null, p3: null, total: null, max: null, sim2: false, sim3: false, src2: '', src3: '', miss: [] };
+    const P = s.pref;
+    const r = { p1: pA(s.t1, P), p2: null, p3: null, total: null, max: null, sim2: false, sim3: false, src2: '', src3: '', miss: [] };
     if (s.grade === '中3') {
-      r.p2 = pA(s.t2);
+      r.p2 = pA(s.t2, P);
       if (r.p1 == null) r.miss.push('中1学年末');
       if (r.p2 == null) r.miss.push('中2学年末');
       if (r.miss.length) { r.cat = 'more12'; return r; }
-      if (full(s.t32)) { r.p3 = pB(s.t32); r.cat = 'kakutei'; r.src3 = '中3 2学期'; }
+      if (full(s.t32)) { r.p3 = pB(s.t32, P); r.cat = 'kakutei'; r.src3 = '中3 2学期'; }
       else {
         const m = merge(s.t32, s.t31);
         r.sim3 = true;
-        if (full(m)) { r.p3 = pB(m); r.cat = 'kari'; r.src3 = any(s.t32) ? '中3 2学期（ない教科は1学期）' : '中3 1学期'; r.base3 = m; }
+        if (full(m)) { r.p3 = pB(m, P); r.cat = 'kari'; r.src3 = any(s.t32) ? '中3 2学期（ない教科は1学期）' : '中3 1学期'; r.base3 = m; }
         else { r.cat = 'more3'; r.base3 = m.map((x, i) => (x != null ? x : s.t2[i])); r.src3 = '中3の通知表がないので、中2学年末の評定を入れています'; }
       }
-      r.max = r.p1 + r.p2 + 130;
+      r.max = r.p1 + r.p2 + FB(P);
       if (r.p3 != null) r.total = r.p1 + r.p2 + r.p3;
       return r;
     }
@@ -379,9 +406,9 @@ button { cursor: pointer; }
     r.base2 = now; r.base3 = now; r.sim2 = !r.p2fix; r.sim3 = true;
     r.src2 = r.p2fix ? '中2学年末' : src + 'のまま';
     r.src3 = src + 'のまま';
-    r.p2 = pA(now); r.p3 = pB(now);
+    r.p2 = pA(now, P); r.p3 = pB(now, P);
     r.total = r.p1 + r.p2 + r.p3;
-    r.max = r.p1 + (r.p2fix ? r.p2 : 65) + 130;
+    r.max = r.p1 + (r.p2fix ? r.p2 : FA(P)) + FB(P);
     return r;
   };
 
@@ -399,13 +426,13 @@ button { cursor: pointer; }
     ],
   };
   const ALL = { k: 'every', title: '全員' };
-  const st = { data: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, sort: 'high', open: null, sim: {}, goal: {}, schools: [], alias: {}, noSheet: [] };
+  const st = { data: [], pref: '大分', prefs: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, sort: 'high', open: null, sim: {}, goal: {}, schoolsBy: {}, aliasBy: {}, roomsAll: [], noSheet: [] };
   const GROUP = { わさだDesakiP: 'わさだDesakiSP', わさだDesakiS: 'わさだDesakiSP', 滝尾P: '滝尾SP', 滝尾S: '滝尾SP', 明野アクロスP: '明野アクロスSP', 明野アクロスS: '明野アクロスSP' };
   const grp = (r) => GROUP[r] || r;
   const uniq = (a) => [...new Set(a)].sort((x, y) => x.localeCompare(y, 'ja'));
   const catOf = (k) => (k === 'every' ? ALL : [...CATS.中3, ...CATS.中2].find((c) => c.k === k));
 
-  const base = () => st.data.filter((x) => x.s.grade === st.grade && (st.room === '全教室' || grp(x.s.room) === st.room));
+  const base = () => st.data.filter((x) => x.s.pref === st.pref && x.s.grade === st.grade && (st.room === '全教室' || grp(x.s.room) === st.room));
   // シミュレーションを入れた生徒は、その合計で並べる
   const shown = (x) => { const m = st.sim[x.s.id + x.s.grade]; return m ? simTotal(x, m) : x.c.total; };
   const rowsOf = () => {
@@ -422,8 +449,8 @@ button { cursor: pointer; }
   };
 
   const simTotal = (x, m) => {
-    const p2 = x.c.sim2 ? pA(m.v2) : x.c.p2;
-    const p3 = pB(m.v3);
+    const p2 = x.c.sim2 ? pA(m.v2, x.s.pref) : x.c.p2;
+    const p3 = pB(m.v3, x.s.pref);
     return p2 == null || p3 == null ? null : x.c.p1 + p2 + p3;
   };
 
@@ -438,7 +465,7 @@ button { cursor: pointer; }
       return box;
     }
     const big = mk('p', 'total');
-    big.append(mk('b', '', c.total == null ? '－' : String(c.total)), mk('small', '', ' / ' + MAX));
+    big.append(mk('b', '', c.total == null ? '－' : String(c.total)), mk('small', '', ' / ' + MAXOF(x.s.pref)));
     box.append(big);
     if (c.cat !== 'kakutei' && c.max != null) box.append(mk('p', 'max', '最大 ' + c.max));
     return box;
@@ -448,7 +475,8 @@ button { cursor: pointer; }
     const cell = (label, v, full, note) => { const d = mk('div', 'pt' + (v == null ? ' none' : '') + (note ? ' kari' : '')); d.append(mk('i', '', label), mk('b', '', v == null ? '－' : String(v)), mk('small', '', '/' + full)); return d; };
     const kari2 = x.s.grade === '中2' && !c.p2fix;
     const kari3 = c.cat !== 'kakutei';
-    g.append(cell('①中1末', c.p1, 65), cell('②中2末', c.p2, 65, kari2), cell('③中3', c.p3, 130, kari3 && c.p3 != null));
+    const P = x.s.pref;
+    g.append(cell('①中1末', c.p1, FA(P)), cell('②中2末', c.p2, FA(P), kari2), cell('③中3', c.p3, FB(P), kari3 && c.p3 != null));
     return g;
   };
   const card = (x) => {
@@ -487,13 +515,14 @@ button { cursor: pointer; }
       box.append(b);
     });
     $('every-btn').textContent = '全員を見る（' + rows.length + '人）';
-    // 点数の分布（20点ごと）
+    // 点数の分布
     const cats = st.grade === '中3' ? ['kakutei', 'kari'] : ['mikomi'];
     $('dist-sub').textContent = st.grade === '中3' ? '確定と仮' : '今のままの見込み';
     const scored = rows.filter((x) => cats.includes(x.c.cat) && x.c.total != null);
     const bands = [];
-    for (let hi = MAX; hi > 0; hi -= 20) bands.push({ lo: Math.max(hi - 19, 0), hi, cats });
-    bands[0].lo = 241; // 241〜260
+    // 点数の帯（大分は20点ごと、宮崎は10点ごと）。いちばん上は満点まで（例：241〜260）
+    const MAX = MAXOF(st.pref), step = rule(st.pref).step;
+    for (let hi = MAX; hi > 0; hi -= step) bands.push({ lo: Math.max(hi - step + 1, 0), hi, cats });
     const used = bands.map((b) => ({ ...b, n: scored.filter((x) => x.c.total >= b.lo && x.c.total <= b.hi).length }));
     let first = used.findIndex((b) => b.n), last = used.length - 1 - [...used].reverse().findIndex((b) => b.n);
     const dist = $('dist'); dist.replaceChildren();
@@ -513,6 +542,13 @@ button { cursor: pointer; }
     $('avg').textContent = avg == null ? '' : '平均 ' + avg + '点';
     $('room-name').textContent = st.room === '全教室' ? (st.all ? '全教室' : st.rooms.join('・')) : st.room;
     document.querySelectorAll('#grades button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === st.grade)));
+    document.querySelectorAll('#prefs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === st.pref)));
+    const R = rule(st.pref);
+    $('pref-tag').textContent = st.pref;
+    $('pref-txt').textContent = MAXOF(st.pref) + '点満点（中1学年末＋中2学年末＋中3 2学期）';
+    $('help-calc').replaceChildren(...[['① 中1学年末', R.a], ['② 中2学年末', R.a], ['③ 中3 2学期', R.b]].map(([n, w]) => { const li = mk('li'); li.append(mk('b', '', n), document.createTextNode('（' + fullOf(w) + '点）：' + how(w))); return li; }));
+    $('help-title').textContent = '計算のしかた（' + st.pref + '・' + MAXOF(st.pref) + '点満点）';
+    $('help-max').textContent = '③が満点（' + FB(st.pref) + '点）だったときの合計です。';
     const nos = st.noSheet.includes(st.grade);
     $('nosheet').hidden = !nos;
   };
@@ -573,11 +609,12 @@ button { cursor: pointer; }
     });
     return box;
   };
+  const schools = () => st.schoolsBy[st.pref] || [];
   // 志望校の書き方（略し方も）から、「基準」タブの高校を探す
   const findSchool = (w) => {
     w = String(w || '').trim(); if (!w) return null;
-    const name = st.alias[w] || w;
-    return st.schools.find((x) => x.name === name) || null;
+    const name = (st.aliasBy[st.pref] || {})[w] || w;
+    return schools().find((x) => x.name === name) || null;
   };
   // 最初に入れておく目標：第一志望校（基準点がなければ第二志望校）
   const defGoal = (s) => {
@@ -598,13 +635,13 @@ button { cursor: pointer; }
   const goalBox = (m, onChange) => {
     const box = mk('div', 'tgt');
     let selRef = null;
-    if (st.schools.length) {
+    if (schools().length) {
       const lab = mk('label', 'tgt-l', '志望校を選ぶ');
       const sel = mk('select', 'tgt-sel');
-      [['', '（選ばない）'], ...st.schools.map((x) => [x.name, x.name + '　' + x.score + '点'])].forEach(([v, tx]) => { const o = mk('option', '', tx); o.value = v; sel.append(o); });
+      [['', '（選ばない）'], ...schools().map((x) => [x.name, x.name + '　' + x.score + '点'])].forEach(([v, tx]) => { const o = mk('option', '', tx); o.value = v; sel.append(o); });
       sel.value = m.school || '';
       sel.onchange = () => {
-        const hit = st.schools.find((x) => x.name === sel.value);
+        const hit = schools().find((x) => x.name === sel.value);
         m.school = hit ? hit.name : '';
         if (hit) { m.target = String(hit.score); tin.value = m.target; }
         onChange();
@@ -612,11 +649,11 @@ button { cursor: pointer; }
       lab.append(sel); box.append(lab);
       selRef = sel;
     }
-    const lab2 = mk('label', 'tgt-l', '目標点' + (st.schools.length ? '（自分で入れることもできます）' : ''));
-    const tin = mk('input'); tin.type = 'number'; tin.inputMode = 'numeric'; tin.min = '0'; tin.max = String(MAX); tin.placeholder = '例：200'; tin.value = m.target || '';
+    const lab2 = mk('label', 'tgt-l', '目標点' + (schools().length ? '（自分で入れることもできます）' : ''));
+    const tin = mk('input'); tin.type = 'number'; tin.inputMode = 'numeric'; tin.min = '0'; tin.max = String(MAXOF(st.pref)); tin.placeholder = '例：200'; tin.value = m.target || '';
     tin.oninput = () => {
       m.target = tin.value.trim();
-      const hit = st.schools.find((x) => x.name === m.school);
+      const hit = schools().find((x) => x.name === m.school);
       if (hit && String(hit.score) !== m.target) { m.school = ''; if (selRef) selRef.value = ''; }
       onChange();
     };
@@ -668,22 +705,22 @@ button { cursor: pointer; }
     const upd = (init) => {
       if (init !== true) st.sim[key] = m; // 開いただけでは「試した」にしない
       const t = simTotal(x, m);
-      const p2 = c.sim2 ? pA(m.v2) : c.p2, p3 = pB(m.v3);
+      const p2 = c.sim2 ? pA(m.v2, s.pref) : c.p2, p3 = pB(m.v3, s.pref);
       res.replaceChildren();
-      const big = mk('p', 'total'); big.append(mk('i', '', '試した合計'), mk('b', '', t == null ? '－' : String(t)), mk('small', '', ' / ' + MAX)); res.append(big);
+      const big = mk('p', 'total'); big.append(mk('i', '', '試した合計'), mk('b', '', t == null ? '－' : String(t)), mk('small', '', ' / ' + MAXOF(s.pref))); res.append(big);
       res.append(mk('p', 'mini', '① ' + c.p1 + ' ＋ ② ' + (p2 ?? '－') + ' ＋ ③ ' + (p3 ?? '－')));
       const tv = Number(m.target);
       if (m.target !== '' && isFinite(tv) && t != null) {
         res.append(goalLine(m, t));
         // ③だけでどこまで必要か（中3）、②③で必要か（中2）
         const rest = tv - c.p1 - (c.sim2 ? 0 : c.p2);
-        const room = c.sim2 ? 65 + 130 : 130;
+        const room = c.sim2 ? FA(s.pref) + FB(s.pref) : FB(s.pref);
         res.append(mk('p', 'mini', (c.sim2 ? '②③' : '③') + 'で必要な点：' + Math.max(rest, 0) + ' / ' + room + (rest > room ? '（満点でも届きません）' : '')));
       }
     };
     sim.append(res, tgt);
-    if (c.sim2) { sim.append(mk('h3', '', '② 中2学年末（5教科＋実技×2）')); sim.append(picker(m.v2, upd)); }
-    sim.append(mk('h3', '', '③ 中3 2学期（5教科×2＋実技×4）'));
+    if (c.sim2) { sim.append(mk('h3', '', '② 中2学年末（' + howShort(rule(s.pref).a) + '）')); sim.append(picker(m.v2, upd)); }
+    sim.append(mk('h3', '', '③ 中3 2学期（' + howShort(rule(s.pref).b) + '）'));
     sim.append(picker(m.v3, upd));
     const reset = mk('button', 'more ghost', '最初の評定に戻す'); reset.type = 'button';
     reset.onclick = () => { delete st.sim[key]; drawDetail(); };
@@ -709,6 +746,16 @@ button { cursor: pointer; }
   { const s0 = load('ns-sort'); if (['high', 'low', 'wish'].includes(s0)) st.sort = s0; }
   document.querySelectorAll('#grades button').forEach((b) => b.addEventListener('click', () => { st.grade = b.dataset.g; save('ns-grade', st.grade); show(); }));
   $('room-sel').addEventListener('change', (e) => { st.room = e.target.value; show(); });
+  document.querySelectorAll('#prefs button').forEach((b) => b.addEventListener('click', () => { st.pref = b.dataset.p; save('ns-pref', st.pref); setRooms(); show(); }));
+  // 教室の選び方（その県の生徒がいる教室だけ）
+  const setRooms = () => {
+    const here = uniq(st.data.filter((x) => x.s.pref === st.pref).map((x) => grp(x.s.room)));
+    st.rooms = st.all ? here : st.roomsAll.filter((r) => here.includes(r) || !st.data.some((x) => grp(x.s.room) === r));
+    const many = st.all || st.rooms.length > 1;
+    st.room = many ? '全教室' : (st.rooms[0] || '全教室');
+    const sel = $('room-sel'); sel.replaceChildren(); sel.hidden = !many;
+    if (many) [['全教室', st.all ? '全教室' : '担当の教室すべて'], ...st.rooms.map((r) => [r, r])].forEach(([v, t]) => { const o = mk('option', '', t); o.value = v; sel.append(o); });
+  };
   $('help-btn').onclick = () => { $('help').hidden = false; };
   $('help-close').onclick = () => { $('help').hidden = true; };
   $('help').addEventListener('click', (e) => { if (e.target === $('help')) $('help').hidden = true; });
@@ -720,14 +767,15 @@ button { cursor: pointer; }
     st.noSheet = data.noSheet || [];
     st.data = (data.students || []).map((s) => ({ s, c: calc(s) }));
     st.sim = {}; st.goal = {};
-    st.schools = data.schools || [];
-    st.alias = data.alias || {};
-    const found = uniq(st.data.map((x) => grp(x.s.room)));
-    st.rooms = st.all ? found : uniq((info.rooms || []).map(grp));
-    const many = st.all || st.rooms.length > 1;
-    st.room = many ? '全教室' : (st.rooms[0] || '全教室');
-    const sel = $('room-sel'); sel.replaceChildren(); sel.hidden = !many;
-    if (many) [['全教室', st.all ? '全教室' : '担当の教室すべて'], ...st.rooms.map((r) => [r, r])].forEach(([v, t]) => { const o = mk('option', '', t); o.value = v; sel.append(o); });
+    st.schoolsBy = data.schools || {};
+    st.aliasBy = data.alias || {};
+    // 県：生徒がいる県だけ。2つあれば切り替えボタンを出す
+    st.prefs = Object.keys(RULES).filter((p) => st.data.some((x) => x.s.pref === p));
+    const p0 = load('ns-pref');
+    st.pref = st.prefs.includes(p0) ? p0 : (st.prefs[0] || '大分');
+    $('prefs').hidden = st.prefs.length < 2;
+    st.roomsAll = uniq((info.rooms || []).map(grp));
+    setRooms();
     const g = load('ns-grade'); st.grade = ['中3', '中2'].includes(g) ? g : '中3';
     st.list = null; st.band = null; st.open = null; $('help').hidden = true;
     $('read-at').textContent = info.at ? info.at + ' に読み込み' : '';
