@@ -208,6 +208,9 @@ function importLogins() {
   var raw = props.getProperty('NS_IMPORT');
   if (!raw) { Logger.log('スクリプト プロパティ NS_IMPORT がありません'); return; }
   var obj;
+  // ログからコピーしたときに前後に付いた文字（時刻・番号など）は無視して、{ から } までを読む
+  var i0 = raw.indexOf('{'), i1 = raw.lastIndexOf('}');
+  if (i0 >= 0 && i1 > i0) raw = raw.slice(i0, i1 + 1);
   try { obj = JSON.parse(raw); } catch (e) { Logger.log('NS_IMPORT の形が違います（ログの1行をそのまま貼ってください）'); return; }
   var add = {}, n = 0;
   Object.keys(obj).forEach(function (k) {
