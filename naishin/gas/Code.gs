@@ -210,9 +210,48 @@ function samePass_(input, want) {
   return num.test(a) && num.test(b) && a.replace(/^0+/, '') === b.replace(/^0+/, '');
 }
 
+/**
+ * ログインの記録。スプレッドシート「内申点チェック ログイン記録」に1回1行で書く（パスワードは書かない）。
+ * 列：日時／結果／入力したID／開いたGoogleアカウント／見られる教室
+ * 表がなければ、最初のログイン（または selfTest）のときに、このApps Scriptを動かすアカウントのドライブに自動で作る。
+ * 作った表のIDはスクリプトプロパティ NS_LOG_SHEET_ID に入る。記録をやめるときは NS_LOG_OFF に 1 を入れる。
+ * 記録に失敗しても、ログインそのものは止めない。
+ */
+function logLogin_(result, id, rooms) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    if (props.getProperty('NS_LOG_OFF')) return;
+    var email = '';
+    try { email = Session.getActiveUser().getEmail() || ''; } catch (e) {}
+    var lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      var sid = props.getProperty('NS_LOG_SHEET_ID'), book = null;
+      if (sid) { try { book = SpreadsheetApp.openById(sid); } catch (e) { book = null; } }
+      if (!book) {
+        book = SpreadsheetApp.create('内申点チェック ログイン記録');
+        book.getSheets()[0].appendRow(['日時', '結果', '入力したID', '開いたGoogleアカウント', '見られる教室']);
+        book.getSheets()[0].setFrozenRows(1);
+        props.setProperty('NS_LOG_SHEET_ID', book.getId());
+      }
+      var sh = book.getSheets()[0];
+      // 先頭が = + - @ の文字は、式として動かないように ' を付けて文字として書く
+      var safe = function (s) { s = String(s == null ? '' : s).slice(0, 200); return /^[=+\-@]/.test(s) ? "'" + s : s; };
+      sh.appendRow([new Date(), result, safe(id), safe(email), safe((rooms || []).join('、'))]);
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (e) {
+    console.error('ログイン記録に失敗: ' + e);
+  }
+}
+
 /** IDとパスワードが合っているときだけ、その人が見てよい教室の生徒を返す。 */
 function getNaishinSP(id, pass) {
-  if (!isStaff_()) throw new Error('東セミのアカウントでGoogleにログインしたブラウザから開いてください');
+  if (!isStaff_()) {
+    logLogin_('拒否（東セミ以外のアカウント）', id);
+    throw new Error('東セミのアカウントでGoogleにログインしたブラウザから開いてください');
+  }
   var accounts = spAccounts_();
   if (!accounts.length) throw new Error('IDとパスワードが未設定です。教務課に連絡してください');
   var key = String(id || '').trim().toLowerCase();
@@ -220,15 +259,18 @@ function getNaishinSP(id, pass) {
   var cache = CacheService.getScriptCache();
   var ck = 'nsfail_' + Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, key));
   var fails = Number(cache.get(ck) || 0);
+  if (fails >= 5) logLogin_('拒否（ロック中）', id);
   if (fails >= 5) throw new Error('まちがいが続いたため、しばらくログインできません。10分ほどたってからお試しください');
   var hit = null;
   accounts.forEach(function (a) { if (!hit && a.id.toLowerCase() === key && samePass_(pass, a.pass)) hit = a; });
   if (!hit) {
     cache.put(ck, String(fails + 1), 600);
+    logLogin_(fails + 1 >= 5 ? '失敗（5回目・10分ロック）' : '失敗（' + (fails + 1) + '回目）', id);
     Utilities.sleep(1500);
     throw new Error('IDかパスワードが違います');
   }
   cache.remove(ck);
+  logLogin_('成功', id, hit.rooms);
   var data = getStudents_();
   delete data.other;
   var all = hit.rooms.indexOf('全教室') >= 0;
@@ -247,6 +289,8 @@ function getNaishinSP(id, pass) {
 function selfTest() {
   Logger.log('今のアカウントは東セミのアカウントと判定：' + isStaff_());
   Logger.log('ログインの登録：' + spAccounts_().length + '件');
+  logLogin_('テスト（selfTest）', '');
+  Logger.log('ログイン記録の表：https://docs.google.com/spreadsheets/d/' + PropertiesService.getScriptProperties().getProperty('NS_LOG_SHEET_ID'));
   var d = getStudents_();
   var all = d.students;
   Object.keys(PREFS).forEach(function (p) {
