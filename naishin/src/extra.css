@@ -76,3 +76,4 @@
 .gate-head .tentori { width: clamp(104px, 33vw, 142px); height: clamp(104px, 33vw, 142px); margin: -10px -10px -8px 0; }
 .grades.g3 { grid-template-columns: repeat(3, 1fr); }
 .parts.one { grid-template-columns: 1fr; }
+.pref-note { margin: 0 0 4px; font-size: 13px; color: var(--mute); background: var(--sky); border-radius: 12px; padding: 8px 12px; }

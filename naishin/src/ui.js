@@ -6,9 +6,12 @@
     大分: { a: [1, 2], b: [2, 4], step: 20 },
     宮崎: { a: [1, 1], b: [1, 1], step: 10 },
     // 福岡は中3の2学期だけ（①②なし）。中3だけを見る
-    福岡: { a: null, b: [1, 1], step: 5, only3: true },
+    // 福岡は学力検査と足さずに、それぞれで順位をつける（両方が合格圏ならＡ群）。そのため「評定合計」「目安」と書く
+    福岡: { a: null, b: [1, 1], step: 5, only3: true, word: '評定合計', goalWord: '目安',
+      note: '福岡は、学力検査（300点）と足さずに、それぞれで順位をつけます。両方が合格圏ならＡ群です。' },
   };
   const rule = (p) => RULES[p] || RULES.大分;
+  const gw = () => rule(st.pref).goalWord || '基準点'; // 志望校の点数の呼び方
   const fullOf = (w) => (w ? 25 * w[0] + 20 * w[1] : 0);
   const FA = (p) => fullOf(rule(p).a), FB = (p) => fullOf(rule(p).b);
   const MAXOF = (p) => FA(p) * 2 + FB(p);
@@ -210,7 +213,8 @@
     document.querySelectorAll('#prefs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.p === st.pref)));
     const R = rule(st.pref);
     $('pref-tag').textContent = st.pref;
-    $('pref-txt').textContent = MAXOF(st.pref) + '点満点（' + (R.only3 ? '中3 2学期だけ' : '中1学年末＋中2学年末＋中3 2学期') + '）';
+    $('pref-txt').textContent = (R.word ? R.word + ' ' : '') + MAXOF(st.pref) + '点満点（' + (R.only3 ? '中3 2学期だけ' : '中1学年末＋中2学年末＋中3 2学期') + '）';
+    $('pref-note').textContent = R.note || ''; $('pref-note').hidden = !R.note;
     $('grades').hidden = !!R.only3;
     $('room-sel').style.marginBottom = R.only3 ? '16px' : '';
     $('help-calc').replaceChildren(...[['① 中1学年末', R.a], ['② 中2学年末', R.a], ['③ 中3 2学期', R.b]].filter(([, w]) => w).map(([n, w]) => { const li = mk('li'); li.append(mk('b', '', n), document.createTextNode('（' + fullOf(w) + '点）：' + how(w))); return li; }));
@@ -233,7 +237,7 @@
     let prev = null;
     rows.slice(0, st.limit).forEach((x) => {
       if (st.sort === 'wish') {
-        const k = wishKey(x.s), label = k.name ? k.name + (k.score != null ? '（基準点 ' + k.score + '）' : '（基準点なし）') : '第一志望校なし';
+        const k = wishKey(x.s), label = k.name ? k.name + (k.score != null ? '（' + gw() + ' ' + k.score + '）' : '（' + gw() + 'なし）') : '第一志望校なし';
         if (label !== prev) { const n = rows.filter((y) => { const kk = wishKey(y.s); return kk.name === k.name; }).length; box.append(mk('h3', 'grp', label + '　' + n + '人')); prev = label; }
       }
       box.append(card(x));
@@ -339,7 +343,7 @@
     const h = mk('div', 'stu-h');
     h.append(mk('span', 'stu-g', s.grade), mk('span', 'stu-n', s.name), chip(c));
     head.append(h, mk('p', 'stu-sub', [s.room, s.school].filter(Boolean).join('　')));
-    if (wishText(s)) head.append(mk('p', 'stu-sub', wishText(s) + ([s.wish1, s.wish2].some((w) => w && !findSchool(w)) ? '（基準点がない学校は選べません）' : '')));
+    if (wishText(s)) head.append(mk('p', 'stu-sub', wishText(s) + ([s.wish1, s.wish2].some((w) => w && !findSchool(w)) ? '（' + gw() + 'がない学校は選べません）' : '')));
     const row = mk('div', 'stu-m'); row.append(scoreLine(x), parts(x)); head.append(row);
     if (c.cat === 'kari') head.append(mk('p', 'stu-sub', '③（色つき）は ' + c.src3 + ' の評定で計算した仮の点です。'));
     if (s.grade === '中2' && c.cat === 'mikomi') head.append(mk('p', 'stu-sub', '②③（色つき）は ' + c.src3 + 'で計算した見込みです。'));
