@@ -311,8 +311,8 @@
     head.append(h, mk('p', 'stu-sub', [s.room, s.school].filter(Boolean).join('　')));
     if (wishText(s)) head.append(mk('p', 'stu-sub', wishText(s) + ([s.wish1, s.wish2].some((w) => w && !findSchool(w)) ? '（基準点がない学校は選べません）' : '')));
     const row = mk('div', 'stu-m'); row.append(scoreLine(x), parts(x)); head.append(row);
-    if (c.cat === 'kari') head.append(mk('p', 'stu-sub', '③（青色）は ' + c.src3 + ' の評定で計算した仮の点です。'));
-    if (s.grade === '中2' && c.cat === 'mikomi') head.append(mk('p', 'stu-sub', '②③（青色）は ' + c.src3 + 'で計算した見込みです。'));
+    if (c.cat === 'kari') head.append(mk('p', 'stu-sub', '③（色つき）は ' + c.src3 + ' の評定で計算した仮の点です。'));
+    if (s.grade === '中2' && c.cat === 'mikomi') head.append(mk('p', 'stu-sub', '②③（色つき）は ' + c.src3 + 'で計算した見込みです。'));
     body.append(head);
     const gt = mk('section', 'card'); gt.append(mk('h2', '', '通知表の評定')); const sc = mk('div', 'gt-wrap'); sc.append(gradeTable(s)); gt.append(sc);
     if (!c.sim3) {
