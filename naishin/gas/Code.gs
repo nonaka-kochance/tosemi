@@ -14,6 +14,11 @@
 var SPREADSHEET_ID = '11_taqonCOus6xlzNfq-DS61OBkH59kDDEQQA5W4PcOo';
 // 学年ごとのタブ（タブ名を変えたら、ここも変える）
 var GRADE_SHEETS = { 中3: '中3', 中2: '中2' };
+// 生徒の志望校の列の見出し（左から順に探す）
+var WISH1_HEADERS = ['第一志望校', '案1'];
+var WISH2_HEADERS = ['第二志望校', '案2'];
+// 志望校の略し方 → 「基準」タブの高校名。略し方が増えたら、ここに足す
+var WISH_ALIAS = { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' };
 // 志望校の基準点のタブ（見出し「高校名」「基準点」）。なくても動く（志望校を選ぶ欄が出ないだけ）
 var GOAL_SHEET = '基準';
 
@@ -107,6 +112,9 @@ function readSheet_(sheet, grade, res) {
   };
   var cId = col('ICC生徒ID'), cName = col('名前'), cRoom = col('教室名');
   var cSchool = cRoom + 1; // 中学校の列（見出しが空のため、教室名の右隣）
+  // 志望校の列（中3は「第一志望校」「第二志望校」、中2は「案1」「案2」）。なければ空
+  var find = function (names) { for (var i = 0; i < names.length; i++) { var c = head.indexOf(names[i]); if (c >= 0) return c; } return -1; };
+  var cWish1 = find(WISH1_HEADERS), cWish2 = find(WISH2_HEADERS);
   // 時期ごとに、9教科の列番号を探す（その時期がタブになければ null）
   var cols = {};
   Object.keys(TERMS).forEach(function (k) {
@@ -125,7 +133,8 @@ function readSheet_(sheet, grade, res) {
     var school = String(row[cSchool] || '').trim();
     if (!cityOf_(school) || NOT_PREF.indexOf(norm_(school)) >= 0) { res.other.push(norm_(school).slice(0, 2)); continue; }
     if (isExcluded_(school)) { res.excluded++; continue; }
-    var s = { grade: grade, id: id, name: nm, room: shortRoom_(row[cRoom]), school: school };
+    var s = { grade: grade, id: id, name: nm, room: shortRoom_(row[cRoom]), school: school,
+      wish1: cWish1 >= 0 ? String(row[cWish1] || '').trim() : '', wish2: cWish2 >= 0 ? String(row[cWish2] || '').trim() : '' };
     Object.keys(cols).forEach(function (k) {
       s[k] = cols[k] ? cols[k].map(function (c) { return grade_(row[c]); }) : SUBJECTS.map(function () { return null; });
     });
@@ -221,6 +230,7 @@ function getNaishinSP(id, pass) {
     });
   }
   data.schools = getSchools_();
+  data.alias = WISH_ALIAS;
   data.info = { all: all, rooms: all ? [] : hit.rooms.map(shortRoom_), at: Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d H:mm') };
   return data;
 }
@@ -230,7 +240,16 @@ function selfTest() {
   Logger.log('今のアカウントは東セミのアカウントと判定：' + isStaff_());
   Logger.log('ログインの登録：' + spAccounts_().length + '件');
   var d = getStudents_();
-  Logger.log('志望校の基準点：' + JSON.stringify(getSchools_()));
+  var sc = getSchools_();
+  Logger.log('志望校の基準点：' + JSON.stringify(sc));
+  // 第一志望校のうち、「基準」タブで見つからない書き方（人数）。よく出るものは WISH_ALIAS か「基準」タブに足す
+  var names = {}; sc.forEach(function (x) { names[x.name] = true; });
+  var miss = {};
+  getStudents_().students.forEach(function (s) {
+    var w = s.wish1; if (!w) return;
+    if (!names[w] && !names[WISH_ALIAS[w]]) miss[w] = (miss[w] || 0) + 1;
+  });
+  Logger.log('第一志望校で基準点がない書き方：' + JSON.stringify(miss));
   Logger.log('大分の生徒：' + d.students.length + '人（中高一貫校で外した生徒：' + d.excluded + '人）');
   if (d.noSheet.length) Logger.log('タブが未設定の学年：' + d.noSheet.join('、'));
   var rooms = {};

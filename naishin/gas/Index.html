@@ -180,6 +180,13 @@ button { cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
 .foot span { font-size: 12px; color: var(--mute); }
 .sim .tgt + .simres { margin-top: 12px; }
+.wish { margin: 8px 0 0; font-size: 13px; font-weight: 700; color: var(--mute); overflow-wrap: anywhere; }
+.wish b { font-weight: 900; }
+.wish b.ok { color: var(--green); }
+.wish b.ng { color: var(--red); }
+.tools { flex-wrap: wrap; }
+.tools .sort { flex: 1 1 100%; padding: 10px 12px; font-size: 15px; }
+.grp { font-size: 15px; font-weight: 900; color: var(--navy); margin: 16px 2px 8px; }
 </style>
 </head>
 <body>
@@ -231,7 +238,7 @@ button { cursor: pointer; }
       <p class="list-note" id="list-note"></p>
       <div class="tools">
         <input id="q" type="search" placeholder="名前で検索" autocomplete="off">
-        <button type="button" id="sort" class="sort">高い順</button>
+        <select id="sort" class="sort" aria-label="並び順"><option value="high">内申点 高い順</option><option value="low">内申点 低い順</option><option value="wish">志望校別</option></select>
       </div>
     </div>
     <div id="cards"></div>
@@ -349,7 +356,7 @@ button { cursor: pointer; }
     ],
   };
   const ALL = { k: 'every', title: '全員' };
-  const st = { data: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, asc: false, open: null, sim: {}, goal: {}, schools: [], noSheet: [] };
+  const st = { data: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, sort: 'high', open: null, sim: {}, goal: {}, schools: [], alias: {}, noSheet: [] };
   const GROUP = { わさだDesakiP: 'わさだDesakiSP', わさだDesakiS: 'わさだDesakiSP', 滝尾P: '滝尾SP', 滝尾S: '滝尾SP', 明野アクロスP: '明野アクロスSP', 明野アクロスS: '明野アクロスSP' };
   const grp = (r) => GROUP[r] || r;
   const uniq = (a) => [...new Set(a)].sort((x, y) => x.localeCompare(y, 'ja'));
@@ -362,7 +369,13 @@ button { cursor: pointer; }
     let rows = base();
     if (st.list !== 'every') rows = rows.filter((x) => (st.band ? st.band.cats.includes(x.c.cat) && x.c.total != null && x.c.total >= st.band.lo && x.c.total <= st.band.hi : x.c.cat === st.list));
     const val = (x) => x.c.total ?? -1;
-    return rows.sort((a, b) => (st.asc ? val(a) - val(b) : val(b) - val(a)) || String(a.s.name).localeCompare(String(b.s.name), 'ja'));
+    const byName = (a, b) => String(a.s.name).localeCompare(String(b.s.name), 'ja');
+    if (st.sort === 'wish') {
+      // 志望校別：第一志望校の基準点が高い学校から。基準点がない学校はそのあと（名前順）、志望校なしは最後。学校の中は内申点が高い順
+      const rank = (x) => { const k = wishKey(x.s); return k.score != null ? [0, -k.score, k.name] : k.name ? [1, 0, k.name] : [2, 0, '']; };
+      return rows.sort((a, b) => { const ra = rank(a), rb = rank(b); return ra[0] - rb[0] || ra[1] - rb[1] || ra[2].localeCompare(rb[2], 'ja') || val(b) - val(a) || byName(a, b); });
+    }
+    return rows.sort((a, b) => (st.sort === 'low' ? val(a) - val(b) : val(b) - val(a)) || byName(a, b));
   };
 
   const simTotal = (x, m) => {
@@ -405,6 +418,13 @@ button { cursor: pointer; }
     const row = mk('div', 'stu-m');
     row.append(scoreLine(x), parts(x));
     c.append(row);
+    const g0 = defGoal(x.s), wl = wishText(x.s);
+    if (wl) {
+      const p = mk('p', 'wish', wl);
+      const t0 = x.c.total;
+      if (g0.target && t0 != null) { const d = Number(g0.target) - t0; p.append(mk('b', d <= 0 ? 'ok' : 'ng', d <= 0 ? '　届いている（+' + -d + '）' : '　あと ' + d + '点')); }
+      c.append(p);
+    }
     const m = st.sim[x.s.id + x.s.grade];
     if (m) { const t = simTotal(x, m); c.append(mk('p', 'simmark', '試した合計 ' + (t == null ? '－' : t) + (m.target ? '　' + (m.school || '目標') + ' ' + m.target : ''))); }
     c.onclick = () => openDetail(x);
@@ -461,10 +481,17 @@ button { cursor: pointer; }
     $('list-title').textContent = L.title;
     $('list-count').textContent = rows.length + '人';
     $('list-note').textContent = st.grade + '　' + (L.note || '');
-    $('sort').textContent = st.asc ? '低い順' : '高い順';
+    $('sort').value = st.sort;
     const box = $('cards'); box.replaceChildren();
     if (!rows.length) box.append(mk('div', 'empty', '該当する生徒はいません'));
-    rows.slice(0, st.limit).forEach((x) => box.append(card(x)));
+    let prev = null;
+    rows.slice(0, st.limit).forEach((x) => {
+      if (st.sort === 'wish') {
+        const k = wishKey(x.s), label = k.name ? k.name + (k.score != null ? '（基準点 ' + k.score + '）' : '（基準点なし）') : '第一志望校なし';
+        if (label !== prev) { const n = rows.filter((y) => { const kk = wishKey(y.s); return kk.name === k.name; }).length; box.append(mk('h3', 'grp', label + '　' + n + '人')); prev = label; }
+      }
+      box.append(card(x));
+    });
     if (rows.length > st.limit) {
       const b = mk('button', 'more ghost', 'さらに表示（残り ' + (rows.length - st.limit) + '人）');
       b.type = 'button'; b.onclick = () => { st.limit += 30; drawList(); };
@@ -502,6 +529,27 @@ button { cursor: pointer; }
       box.append(row);
     });
     return box;
+  };
+  // 志望校の書き方（略し方も）から、「基準」タブの高校を探す
+  const findSchool = (w) => {
+    w = String(w || '').trim(); if (!w) return null;
+    const name = st.alias[w] || w;
+    return st.schools.find((x) => x.name === name) || null;
+  };
+  // 最初に入れておく目標：第一志望校（基準点がなければ第二志望校）
+  const defGoal = (s) => {
+    const hit = findSchool(s.wish1) || findSchool(s.wish2);
+    return hit ? { school: hit.name, target: String(hit.score) } : { school: '', target: '' };
+  };
+  // 志望校別に並べるときのまとまり（第一志望校）
+  const wishKey = (s) => {
+    const h = findSchool(s.wish1);
+    return h ? { name: h.name, score: h.score } : { name: String(s.wish1 || '').trim(), score: null };
+  };
+  const wishText = (s) => {
+    const one = (w) => { const h = findSchool(w); return h ? h.name + ' ' + h.score : w; };
+    const a = [s.wish1 && '①' + one(s.wish1), s.wish2 && '②' + one(s.wish2)].filter(Boolean);
+    return a.length ? '志望 ' + a.join('　') : '';
   };
   // 目標点：「基準」タブの高校を選ぶか、点数を入れる
   const goalBox = (m, onChange) => {
@@ -544,6 +592,7 @@ button { cursor: pointer; }
     const h = mk('div', 'stu-h');
     h.append(mk('span', 'stu-g', s.grade), mk('span', 'stu-n', s.name), chip(c));
     head.append(h, mk('p', 'stu-sub', [s.room, s.school].filter(Boolean).join('　')));
+    if (wishText(s)) head.append(mk('p', 'stu-sub', wishText(s) + ([s.wish1, s.wish2].some((w) => w && !findSchool(w)) ? '（基準点がない学校は選べません）' : '')));
     const row = mk('div', 'stu-m'); row.append(scoreLine(x), parts(x)); head.append(row);
     if (c.cat === 'kari') head.append(mk('p', 'stu-sub', '③（青色）は ' + c.src3 + ' の評定で計算した仮の点です。'));
     if (s.grade === '中2' && c.cat === 'mikomi') head.append(mk('p', 'stu-sub', '②③（青色）は ' + c.src3 + 'で計算した見込みです。'));
@@ -553,7 +602,7 @@ button { cursor: pointer; }
       // 確定の生徒：志望校の基準点と比べるだけ
       if (c.total != null) {
         const key = s.id + s.grade;
-        const m = st.goal[key] || (st.goal[key] = { target: '', school: '' });
+        const m = st.goal[key] || (st.goal[key] = defGoal(s));
         const card = mk('section', 'card sim');
         card.append(mk('h2', '', '志望校と比べる'));
         const res = mk('div', 'simres');
@@ -567,14 +616,14 @@ button { cursor: pointer; }
     }
     // シミュレーション
     const key = s.id + s.grade;
-    const m = st.sim[key] || { v2: (c.base2 || []).slice(), v3: c.base3.slice(), target: '' };
+    const m = st.sim[key] || { v2: (c.base2 || []).slice(), v3: c.base3.slice(), ...(st.goal[key] || defGoal(s)) };
     const sim = mk('section', 'card sim');
     sim.append(mk('h2', '', 'シミュレーション'));
     sim.append(mk('p', 'mini', s.grade === '中3' ? '③中3 2学期の評定を入れると、合計が変わります。最初は ' + c.src3.replace(/のまま$/, '') + ' の評定です。' : '②中2学年末と③中3 2学期の評定を入れると、合計が変わります。最初は今の評定（' + c.src3.replace(/のまま$/, '') + '）です。'));
     const res = mk('div', 'simres');
     const tgt = goalBox(m, () => upd());
-    const upd = () => {
-      st.sim[key] = m;
+    const upd = (init) => {
+      if (init !== true) st.sim[key] = m; // 開いただけでは「試した」にしない
       const t = simTotal(x, m);
       const p2 = c.sim2 ? pA(m.v2) : c.p2, p3 = pB(m.v3);
       res.replaceChildren();
@@ -597,7 +646,7 @@ button { cursor: pointer; }
     reset.onclick = () => { delete st.sim[key]; drawDetail(); };
     sim.append(reset);
     body.append(sim, gt);
-    upd();
+    upd(true);
   };
 
   const show = () => {
@@ -613,7 +662,8 @@ button { cursor: pointer; }
   $('back').onclick = () => { st.list = null; st.band = null; show(); window.scrollTo(0, 0); };
   $('d-back').onclick = () => { st.open = null; show(); window.scrollTo(0, (st.list || st.band) ? listY : 0); };
   $('q').addEventListener('input', (e) => { st.q = e.target.value.trim(); st.limit = 30; drawList(); });
-  $('sort').onclick = () => { st.asc = !st.asc; drawList(); };
+  $('sort').addEventListener('change', (e) => { st.sort = e.target.value; save('ns-sort', st.sort); st.limit = 30; drawList(); });
+  { const s0 = load('ns-sort'); if (['high', 'low', 'wish'].includes(s0)) st.sort = s0; }
   document.querySelectorAll('#grades button').forEach((b) => b.addEventListener('click', () => { st.grade = b.dataset.g; save('ns-grade', st.grade); show(); }));
   $('room-sel').addEventListener('change', (e) => { st.room = e.target.value; show(); });
   $('help-btn').onclick = () => { $('help').hidden = false; };
@@ -628,6 +678,7 @@ button { cursor: pointer; }
     st.data = (data.students || []).map((s) => ({ s, c: calc(s) }));
     st.sim = {}; st.goal = {};
     st.schools = data.schools || [];
+    st.alias = data.alias || {};
     const found = uniq(st.data.map((x) => grp(x.s.room)));
     st.rooms = st.all ? found : uniq((info.rooms || []).map(grp));
     const many = st.all || st.rooms.length > 1;
