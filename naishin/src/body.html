@@ -1,0 +1,91 @@
+<div id="banner" hidden></div>
+<div id="gate" hidden>
+  <div class="gate-card">
+    <p class="logo">内申点<b>チェック</b></p>
+    <svg class="swoosh" viewBox="0 0 150 14" aria-hidden="true"><path d="M3 10C40 6 70 3 100 4s35 1 47-2" fill="none" stroke="#e0322b" stroke-width="4" stroke-linecap="round"/></svg>
+    <p class="gate-lead">ログイン</p>
+    <p class="gate-sub">自分の教室の生徒だけが表示されます。</p>
+    <label class="gate-l">ID<input id="gate-id" type="email" inputmode="email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+    <label class="gate-l">パスワード<input id="gate-input" type="password" autocomplete="off"></label>
+    <button id="gate-ok" type="button">ログイン</button>
+    <p id="gate-msg"></p>
+    <p class="gate-note">東セミの社員専用です。開くたびに入力が必要です。</p>
+  </div>
+</div>
+<div id="app" class="wrap" hidden>
+  <div id="home">
+    <header class="top">
+      <div>
+        <p class="logo">内申点<b>チェック</b></p>
+        <p class="room" id="room-name"></p>
+      </div>
+      <button type="button" class="help-btn" id="help-btn">？ 見方</button>
+    </header>
+    <p class="pref"><span>大分</span>260点満点（中1学年末＋中2学年末＋中3 2学期）</p>
+    <select id="room-sel" aria-label="教室" hidden></select>
+    <div class="grades g2" id="grades" role="group" aria-label="学年">
+      <button type="button" data-g="中3">中3</button>
+      <button type="button" data-g="中2">中2</button>
+    </div>
+    <p class="nosheet" id="nosheet" hidden>この学年のデータはまだ読み込む設定になっていません。</p>
+    <section class="card">
+      <h2>内申点の状況</h2>
+      <div class="two" id="cats"></div>
+      <button type="button" class="more" id="every-btn">全員を見る</button>
+    </section>
+    <section class="card">
+      <h2>点数の分布<span id="dist-sub">確定と仮</span><b class="rate" id="avg"></b></h2>
+      <div id="dist"></div>
+      <p class="mini">押すと、その点数の生徒が出ます。</p>
+    </section>
+    <p class="foot"><span id="read-at"></span><br><button type="button" id="logout">ログアウト</button></p>
+  </div>
+  <div id="list" hidden>
+    <div class="list-top">
+      <button type="button" class="back" id="back">‹ もどる</button>
+      <p class="list-title"><span id="list-title"></span><small id="list-count"></small></p>
+      <p class="list-note" id="list-note"></p>
+      <div class="tools">
+        <input id="q" type="search" placeholder="名前で検索" autocomplete="off">
+        <button type="button" id="sort" class="sort">高い順</button>
+      </div>
+    </div>
+    <div id="cards"></div>
+  </div>
+  <div id="detail" hidden>
+    <div class="list-top">
+      <button type="button" class="back" id="d-back">‹ もどる</button>
+    </div>
+    <div id="d-body"></div>
+  </div>
+  <div id="help" hidden>
+    <div class="sheet" role="dialog" aria-label="見方">
+      <h2>見方</h2>
+      <h3>計算のしかた（大分・260点満点）</h3>
+      <ul>
+        <li><b>① 中1学年末</b>（65点）：5教科の合計 ＋ 実技4教科の合計×2</li>
+        <li><b>② 中2学年末</b>（65点）：5教科の合計 ＋ 実技4教科の合計×2</li>
+        <li><b>③ 中3 2学期</b>（130点）：5教科の合計×2 ＋ 実技4教科の合計×4</li>
+      </ul>
+      <p>5教科は国・社・数・理・英、実技4教科は体育・音楽・美術・家庭科です。</p>
+      <h3>確定・仮・入力漏れ</h3>
+      <ul>
+        <li><b>確定</b>：①②③がそろっています。</li>
+        <li><b>仮</b>：中3 2学期がまだなので、中3 1学期の評定を③として計算しています。</li>
+        <li><b>中3が入力漏れ</b>：①②はあるのに、中3の通知表が入っていません。</li>
+        <li><b>中1・中2が入力漏れ</b>：①か②が入っていません。合計は出しません。</li>
+        <li><b>最大</b>：③が満点（130点）だったときの合計です。</li>
+      </ul>
+      <h3>中2（今のままの見込み）</h3>
+      <ul>
+        <li>中1学年末が入っていない生徒は「中1学年末が入力漏れ」です。</li>
+        <li>入っている生徒は、今の中2の評定（2学期、なければ1学期）のまま中2学年末と中3 2学期を迎えたときの合計を出します。</li>
+      </ul>
+      <h3>シミュレーション</h3>
+      <p>生徒のカードを押すと、通知表の評定が見られます。仮・入力漏れ（中3）・見込み（中2）の生徒は、評定を入れて合計を試せます。目標点（志望校）を入れると、あと何点かが出ます。入れた評定は保存されません（ログアウトすると消えます）。</p>
+      <h3>対象</h3>
+      <p>大分の中学校の中3生・中2生です。中高一貫校の生徒は外しています。</p>
+      <button type="button" class="more ghost" id="help-close">とじる</button>
+    </div>
+  </div>
+</div>

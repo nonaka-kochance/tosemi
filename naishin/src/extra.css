@@ -1,0 +1,59 @@
+/* ===== 内申点チェック用に足した部分 ===== */
+.pref { margin: 2px 0 4px; font-size: 13px; font-weight: 700; color: var(--mute); }
+.pref span { display: inline-block; background: var(--navy); color: #fff; border-radius: 8px; padding: 1px 8px; margin-right: 6px; }
+.grades.g2 { grid-template-columns: 1fr 1fr; }
+.nosheet { background: var(--cream); color: var(--amber); font-weight: 700; font-size: 14px; border-radius: 14px; padding: 10px 14px; margin: 0 0 14px; }
+.mini { font-size: 13px; color: var(--mute); margin: 8px 0 0; }
+.band { display: grid; grid-template-columns: 76px 1fr 48px; align-items: center; gap: 8px; width: 100%; padding: 7px 4px; border: 0; background: none; text-align: left; border-radius: 10px; }
+.band:active:not(:disabled) { background: var(--sky); }
+.band:disabled { cursor: default; opacity: .55; }
+.blab { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.band b { font-size: 15px; text-align: right; color: var(--navy); white-space: nowrap; }
+.bbar { height: 14px; background: #eef1f7; border-radius: 7px; overflow: hidden; }
+.bbar span { display: block; height: 100%; background: var(--blue); border-radius: 7px; min-width: 4px; }
+.tools { display: flex; gap: 8px; }
+.tools #q { flex: 1; min-width: 0; }
+.sort { flex: none; padding: 0 14px; border: 2px solid var(--line); border-radius: 14px; background: #fff; font-weight: 800; color: var(--navy); font-size: 14px; }
+.tapcard { cursor: pointer; }
+.tapcard:active { background: #f7f9fd; }
+.stu-st.kari { background: var(--sky); color: var(--blue); }
+.stu-st.warn { background: var(--cream); color: var(--amber); }
+.stu-m { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.score { flex: none; min-width: 92px; }
+.total { margin: 0; color: var(--navy); line-height: 1.05; }
+.total b { font-size: 34px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.total small { font-size: 14px; font-weight: 700; color: var(--mute); }
+.total i { display: block; font-style: normal; font-size: 13px; font-weight: 700; color: var(--mute); margin-bottom: 2px; }
+.max { margin: 2px 0 0; font-size: 13px; font-weight: 800; color: var(--blue); }
+.miss { margin: 0; font-size: 14px; font-weight: 800; color: var(--amber); }
+.parts { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+.pt { background: #f3f5f9; border-radius: 10px; padding: 5px 2px; text-align: center; min-width: 0; }
+.pt i { display: block; font-style: normal; font-size: 11px; font-weight: 700; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pt b { font-size: 18px; font-weight: 900; color: var(--navy); font-variant-numeric: tabular-nums; }
+.pt small { font-size: 11px; color: var(--mute); }
+.pt.kari { background: var(--sky); }
+.pt.none b { color: #b4bac6; }
+.simmark { margin: 8px 0 0; font-size: 13px; font-weight: 800; color: var(--blue); }
+.gt-wrap { overflow-x: auto; }
+.gt { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.gt th, .gt td { padding: 6px 2px; text-align: center; border-bottom: 1px solid var(--line); }
+.gt th:first-child { text-align: left; white-space: nowrap; font-size: 12px; padding-right: 6px; }
+.gt tr:first-child th { font-size: 13px; color: var(--mute); }
+.gt td.none { color: #b4bac6; }
+.sim h3 { font-size: 15px; margin: 18px 0 6px; color: var(--navy); }
+.simres { background: var(--sky); border-radius: 16px; padding: 12px 14px; }
+.simres .mini { margin-top: 4px; color: var(--ink); }
+.goal { margin: 8px 0 0; font-weight: 900; font-size: 18px; }
+.goal.ok { color: var(--green); }
+.goal.ng { color: var(--red); }
+.tgt { display: block; margin: 12px 0 0; font-size: 14px; font-weight: 700; }
+.tgt input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font-size: 17px; border: 2px solid var(--line); border-radius: 14px; background: #fff; outline: none; }
+.tgt input:focus { border-color: var(--blue); }
+.pick { display: grid; gap: 6px; }
+.pk { display: flex; align-items: center; gap: 8px; }
+.pk.gap { margin-top: 8px; }
+.pk-s { flex: none; width: 24px; font-weight: 800; color: var(--navy); }
+.seg { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.seg button { padding: 9px 0; border: 2px solid var(--line); border-radius: 10px; background: #fff; font-weight: 800; color: var(--mute); }
+.seg button[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.foot span { font-size: 12px; color: var(--mute); }
