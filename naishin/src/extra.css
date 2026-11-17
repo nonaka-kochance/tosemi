@@ -74,3 +74,5 @@
 .prefs button[aria-pressed="true"] { background: #f08a00; border-color: #f08a00; }
 /* 点取くん（合格祈願の絵馬）は余白が多いので、過去最高チェックより少し大きく */
 .gate-head .tentori { width: clamp(104px, 33vw, 142px); height: clamp(104px, 33vw, 142px); margin: -10px -10px -8px 0; }
+.grades.g3 { grid-template-columns: repeat(3, 1fr); }
+.parts.one { grid-template-columns: 1fr; }

@@ -22,9 +22,10 @@
       <button type="button" class="help-btn" id="help-btn">？ 見方</button>
     </header>
     <p class="pref"><span id="pref-tag">大分</span><i id="pref-txt"></i></p>
-    <div class="grades g2 prefs" id="prefs" role="group" aria-label="県" hidden>
+    <div class="grades g3 prefs" id="prefs" role="group" aria-label="県" hidden>
       <button type="button" data-p="大分">大分</button>
       <button type="button" data-p="宮崎">宮崎</button>
+      <button type="button" data-p="福岡">福岡</button>
     </div>
     <select id="room-sel" aria-label="教室" hidden></select>
     <div class="grades g2" id="grades" role="group" aria-label="学年">
@@ -70,13 +71,13 @@
       <p>5教科は国・社・数・理・英、実技4教科は体育・音楽・美術・家庭科です。</p>
       <h3>確定・仮・入力漏れ</h3>
       <ul>
-        <li><b>確定</b>：①②③がそろっています。</li>
+        <li><b>確定</b>：計算に使う通知表がすべてそろっています。</li>
         <li><b>仮</b>：中3 2学期がまだなので、中3 1学期の評定を③として計算しています。</li>
-        <li><b>中3が入力漏れ</b>：①②はあるのに、中3の通知表が入っていません。</li>
-        <li><b>中1・中2が入力漏れ</b>：①か②が入っていません。合計は出しません。</li>
+        <li><b>中3が入力漏れ</b>：中3の通知表が入っていません。</li>
+        <li><b>中1・中2が入力漏れ</b>（大分・宮崎）：①か②が入っていません。合計は出しません。</li>
         <li><b>最大</b>：<span id="help-max"></span></li>
       </ul>
-      <h3>中2（今のままの見込み）</h3>
+      <h3>中2（今のままの見込み、大分・宮崎）</h3>
       <ul>
         <li>中1学年末が入っていない生徒は「中1学年末が入力漏れ」です。</li>
         <li>入っている生徒は、今の中2の評定（2学期、なければ1学期）のまま中2学年末と中3 2学期を迎えたときの合計を出します。</li>
@@ -84,7 +85,7 @@
       <h3>シミュレーション</h3>
       <p>生徒のカードを押すと、通知表の評定が見られます。仮・入力漏れ（中3）・見込み（中2）の生徒は、評定を入れて合計を試せます。目標点（志望校）を入れると、あと何点かが出ます。入れた評定は保存されません（ログアウトすると消えます）。</p>
       <h3>対象</h3>
-      <p>大分・宮崎の中学校の中3生・中2生です。中高一貫校の生徒は外しています。</p>
+      <p>大分・宮崎の中学校の中3生・中2生と、福岡の中学校の中3生です（福岡の内申点は中3 2学期だけ）。中高一貫校の生徒は外しています。</p>
       <button type="button" class="more ghost" id="help-close">とじる</button>
     </div>
   </div>

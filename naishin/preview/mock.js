@@ -37,10 +37,17 @@
     if (i % 9 === 4) s.t1 = none();
     students.push(s);
   }
+  // 福岡（中3だけ。中3 2学期だけで45点満点）
+  for (let i = 0; i < 20; i++) {
+    const base = 2.4 + rnd() * 2.6;
+    const s = { pref: '福岡', grade: '中3', id: 'fk' + i, name: pick(fam) + ' ' + pick(giv), room: '見本教室F', school: '福津見本中',
+      wish1: pick(['宗像', '福岡', '修猷館', '']), wish2: '', t1: term(base), t21: term(base), t22: term(base), t2: term(base), t31: i % 7 === 3 ? none() : term(base), t32: i % 4 === 0 ? term(base) : none() };
+    students.push(s);
+  }
   const data = {
     students, noSheet: [],
-    schools: { 宮崎: [], 大分: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })) },
-    alias: { 宮崎: {}, 大分: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' } },
+    schools: { 福岡: [], 宮崎: [], 大分: [['上野丘', 240], ['舞鶴', 230], ['豊府', 220], ['大分西', 215], ['雄城台', 200], ['鶴崎', 200], ['大分南', 170], ['大分商業', 180], ['情報科学', 170], ['大分工業', 160], ['鶴崎工業', 160], ['別府鶴見丘', 195], ['別府翔青', 170], ['臼杵', 170], ['大分東', 130]].map(([name, score]) => ({ name, score })) },
+    alias: { 福岡: {}, 宮崎: {}, 大分: { 大工: '大分工業', 大商: '大分商業', 情科: '情報科学', 鶴工: '鶴崎工業', 鶴見丘: '別府鶴見丘', 翔青: '別府翔青', 東: '大分東' } },
     info: { all: true, rooms: [], at: '試し版' },
   };
   const run = (ok) => ({ withSuccessHandler: (f) => run(f), withFailureHandler: () => run(ok), getNaishinSP: () => setTimeout(() => ok(JSON.parse(JSON.stringify(data))), 200) });
