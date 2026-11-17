@@ -73,7 +73,7 @@
     ],
   };
   const ALL = { k: 'every', title: '全員' };
-  const st = { data: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, asc: false, open: null, sim: {}, noSheet: [] };
+  const st = { data: [], grade: '中3', room: '全教室', rooms: [], all: false, list: null, band: null, q: '', limit: 30, asc: false, open: null, sim: {}, goal: {}, schools: [], noSheet: [] };
   const GROUP = { わさだDesakiP: 'わさだDesakiSP', わさだDesakiS: 'わさだDesakiSP', 滝尾P: '滝尾SP', 滝尾S: '滝尾SP', 明野アクロスP: '明野アクロスSP', 明野アクロスS: '明野アクロスSP' };
   const grp = (r) => GROUP[r] || r;
   const uniq = (a) => [...new Set(a)].sort((x, y) => x.localeCompare(y, 'ja'));
@@ -130,7 +130,7 @@
     row.append(scoreLine(x), parts(x));
     c.append(row);
     const m = st.sim[x.s.id + x.s.grade];
-    if (m) { const t = simTotal(x, m); c.append(mk('p', 'simmark', '試した合計 ' + (t == null ? '－' : t) + (m.target ? '　目標 ' + m.target : ''))); }
+    if (m) { const t = simTotal(x, m); c.append(mk('p', 'simmark', '試した合計 ' + (t == null ? '－' : t) + (m.target ? '　' + (m.school || '目標') + ' ' + m.target : ''))); }
     c.onclick = () => openDetail(x);
     return c;
   };
@@ -227,6 +227,40 @@
     });
     return box;
   };
+  // 目標点：「基準」タブの高校を選ぶか、点数を入れる
+  const goalBox = (m, onChange) => {
+    const box = mk('div', 'tgt');
+    let selRef = null;
+    if (st.schools.length) {
+      const lab = mk('label', 'tgt-l', '志望校を選ぶ');
+      const sel = mk('select', 'tgt-sel');
+      [['', '（選ばない）'], ...st.schools.map((x) => [x.name, x.name + '　' + x.score + '点'])].forEach(([v, tx]) => { const o = mk('option', '', tx); o.value = v; sel.append(o); });
+      sel.value = m.school || '';
+      sel.onchange = () => {
+        const hit = st.schools.find((x) => x.name === sel.value);
+        m.school = hit ? hit.name : '';
+        if (hit) { m.target = String(hit.score); tin.value = m.target; }
+        onChange();
+      };
+      lab.append(sel); box.append(lab);
+      selRef = sel;
+    }
+    const lab2 = mk('label', 'tgt-l', '目標点' + (st.schools.length ? '（自分で入れることもできます）' : ''));
+    const tin = mk('input'); tin.type = 'number'; tin.inputMode = 'numeric'; tin.min = '0'; tin.max = String(MAX); tin.placeholder = '例：200'; tin.value = m.target || '';
+    tin.oninput = () => {
+      m.target = tin.value.trim();
+      const hit = st.schools.find((x) => x.name === m.school);
+      if (hit && String(hit.score) !== m.target) { m.school = ''; if (selRef) selRef.value = ''; }
+      onChange();
+    };
+    lab2.append(tin); box.append(lab2);
+    return box;
+  };
+  const goalLine = (m, total) => {
+    const d = Number(m.target) - total;
+    const who = m.school ? m.school + '（' + m.target + '点）' : '目標（' + m.target + '点）';
+    return mk('p', 'goal ' + (d <= 0 ? 'ok' : 'ng'), d <= 0 ? '🎉 ' + who + 'に届いています（' + -d + '点の余裕）' : who + 'まで あと ' + d + '点');
+  };
   const drawDetail = () => {
     const x = st.open, s = x.s, c = x.c;
     const body = $('d-body'); body.replaceChildren();
@@ -239,7 +273,22 @@
     if (s.grade === '中2' && c.cat === 'mikomi') head.append(mk('p', 'stu-sub', '②③（青色）は ' + c.src3 + 'で計算した見込みです。'));
     body.append(head);
     const gt = mk('section', 'card'); gt.append(mk('h2', '', '通知表の評定')); const sc = mk('div', 'gt-wrap'); sc.append(gradeTable(s)); gt.append(sc);
-    if (!c.sim3) { body.append(gt); return; }
+    if (!c.sim3) {
+      // 確定の生徒：志望校の基準点と比べるだけ
+      if (c.total != null) {
+        const key = s.id + s.grade;
+        const m = st.goal[key] || (st.goal[key] = { target: '', school: '' });
+        const card = mk('section', 'card sim');
+        card.append(mk('h2', '', '志望校と比べる'));
+        const res = mk('div', 'simres');
+        const upd = () => { res.replaceChildren(); const tv = Number(m.target); res.append(m.target !== '' && isFinite(tv) ? goalLine(m, c.total) : mk('p', 'mini', '志望校を選ぶか、目標点を入れてください。')); };
+        card.append(goalBox(m, upd), res);
+        body.append(card);
+        upd();
+      }
+      body.append(gt);
+      return;
+    }
     // シミュレーション
     const key = s.id + s.grade;
     const m = st.sim[key] || { v2: (c.base2 || []).slice(), v3: c.base3.slice(), target: '' };
@@ -247,9 +296,7 @@
     sim.append(mk('h2', '', 'シミュレーション'));
     sim.append(mk('p', 'mini', s.grade === '中3' ? '③中3 2学期の評定を入れると、合計が変わります。最初は ' + c.src3.replace(/のまま$/, '') + ' の評定です。' : '②中2学年末と③中3 2学期の評定を入れると、合計が変わります。最初は今の評定（' + c.src3.replace(/のまま$/, '') + '）です。'));
     const res = mk('div', 'simres');
-    const tgt = mk('label', 'tgt', '目標点（志望校）');
-    const tin = mk('input'); tin.type = 'number'; tin.inputMode = 'numeric'; tin.min = '0'; tin.max = String(MAX); tin.placeholder = '例：200'; tin.value = m.target || '';
-    tgt.append(tin);
+    const tgt = goalBox(m, () => upd());
     const upd = () => {
       st.sim[key] = m;
       const t = simTotal(x, m);
@@ -259,15 +306,13 @@
       res.append(mk('p', 'mini', '① ' + c.p1 + ' ＋ ② ' + (p2 ?? '－') + ' ＋ ③ ' + (p3 ?? '－')));
       const tv = Number(m.target);
       if (m.target !== '' && isFinite(tv) && t != null) {
-        const d = tv - t;
-        res.append(mk('p', 'goal ' + (d <= 0 ? 'ok' : 'ng'), d <= 0 ? '🎉 目標に届いています（' + -d + '点の余裕）' : '目標まで あと ' + d + '点'));
+        res.append(goalLine(m, t));
         // ③だけでどこまで必要か（中3）、②③で必要か（中2）
         const rest = tv - c.p1 - (c.sim2 ? 0 : c.p2);
         const room = c.sim2 ? 65 + 130 : 130;
         res.append(mk('p', 'mini', (c.sim2 ? '②③' : '③') + 'で必要な点：' + Math.max(rest, 0) + ' / ' + room + (rest > room ? '（満点でも届きません）' : '')));
       }
     };
-    tin.oninput = () => { m.target = tin.value.trim(); upd(); };
     sim.append(res, tgt);
     if (c.sim2) { sim.append(mk('h3', '', '② 中2学年末（5教科＋実技×2）')); sim.append(picker(m.v2, upd)); }
     sim.append(mk('h3', '', '③ 中3 2学期（5教科×2＋実技×4）'));
@@ -305,7 +350,8 @@
     st.all = !!info.all;
     st.noSheet = data.noSheet || [];
     st.data = (data.students || []).map((s) => ({ s, c: calc(s) }));
-    st.sim = {};
+    st.sim = {}; st.goal = {};
+    st.schools = data.schools || [];
     const found = uniq(st.data.map((x) => grp(x.s.room)));
     st.rooms = st.all ? found : uniq((info.rooms || []).map(grp));
     const many = st.all || st.rooms.length > 1;
@@ -317,6 +363,6 @@
     $('read-at').textContent = info.at ? info.at + ' に読み込み' : '';
     show();
   };
-  window.nsStop = () => { st.data = []; st.sim = {}; st.list = null; st.band = null; st.open = null; $('cards').replaceChildren(); $('d-body').replaceChildren(); };
+  window.nsStop = () => { st.data = []; st.sim = {}; st.goal = {}; st.list = null; st.band = null; st.open = null; $('cards').replaceChildren(); $('d-body').replaceChildren(); };
   window.nsCalc = calc; // 確認用
 })();

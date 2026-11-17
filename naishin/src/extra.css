@@ -46,7 +46,9 @@
 .goal { margin: 8px 0 0; font-weight: 900; font-size: 18px; }
 .goal.ok { color: var(--green); }
 .goal.ng { color: var(--red); }
-.tgt { display: block; margin: 12px 0 0; font-size: 14px; font-weight: 700; }
+.tgt { display: block; margin: 12px 0 0; }
+.tgt-l { display: block; margin: 10px 0 0; font-size: 14px; font-weight: 700; }
+.tgt-sel { display: block; width: 100%; margin-top: 6px; padding: 12px; font-size: 16px; font-weight: 700; border: 2px solid var(--line); border-radius: 14px; background: #fff; }
 .tgt input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font-size: 17px; border: 2px solid var(--line); border-radius: 14px; background: #fff; outline: none; }
 .tgt input:focus { border-color: var(--blue); }
 .pick { display: grid; gap: 6px; }
@@ -57,3 +59,4 @@
 .seg button { padding: 9px 0; border: 2px solid var(--line); border-radius: 10px; background: #fff; font-weight: 800; color: var(--mute); }
 .seg button[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
 .foot span { font-size: 12px; color: var(--mute); }
+.sim .tgt + .simres { margin-top: 12px; }

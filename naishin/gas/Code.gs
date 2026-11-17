@@ -14,6 +14,8 @@
 var SPREADSHEET_ID = '11_taqonCOus6xlzNfq-DS61OBkH59kDDEQQA5W4PcOo';
 // 学年ごとのタブ（タブ名を変えたら、ここも変える）
 var GRADE_SHEETS = { 中3: '中3', 中2: '中2' };
+// 志望校の基準点のタブ（見出し「高校名」「基準点」）。なくても動く（志望校を選ぶ欄が出ないだけ）
+var GOAL_SHEET = '基準';
 
 // 大分の生徒だけを使う。中学校の列は「市町村名＋学校名」（例：大分王子、別府明豊）なので、
 // 先頭が大分県の市町村名の生徒を大分とする。宮崎・福岡を作るときはここを変える
@@ -132,6 +134,29 @@ function readSheet_(sheet, grade, res) {
 }
 
 /**
+ * 「基準」タブから、高校名と基準点（例：240点）を読む。並びはタブの順のまま。
+ * 返す形：[{ name: '上野丘', score: 240 }, ...]
+ */
+function getSchools_() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(GOAL_SHEET);
+  if (!sheet) return [];
+  var v = sheet.getDataRange().getDisplayValues();
+  var cName = -1, cScore = -1, r0 = -1;
+  for (var r = 0; r < v.length && r0 < 0; r++) {
+    var h = v[r].map(norm_);
+    if (h.indexOf('高校名') >= 0 && h.indexOf('基準点') >= 0) { cName = h.indexOf('高校名'); cScore = h.indexOf('基準点'); r0 = r; }
+  }
+  if (r0 < 0) return [];
+  var out = [];
+  for (var q = r0 + 1; q < v.length; q++) {
+    var name = String(v[q][cName] || '').trim();
+    var m = String(v[q][cScore] || '').replace(/[０-９]/g, function (d) { return String.fromCharCode(d.charCodeAt(0) - 0xFEE0); }).match(/\d+/);
+    if (name && m) out.push({ name: name, score: Number(m[0]) });
+  }
+  return out;
+}
+
+/**
  * ログイン。IDとパスワードは、このファイルには書かない（過去最高チェックのスマホ版と同じ形）。
  * 「プロジェクトの設定」→「スクリプト プロパティ」に、1人1つ追加する。
  *   プロパティ：SP_USER_ のあとにID（例：SP_USER_xxxx@tosemi.in）
@@ -195,6 +220,7 @@ function getNaishinSP(id, pass) {
       return hit.rooms.some(function (w) { return roomMatch_(w, s.room); });
     });
   }
+  data.schools = getSchools_();
   data.info = { all: all, rooms: all ? [] : hit.rooms.map(shortRoom_), at: Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M/d H:mm') };
   return data;
 }
@@ -204,6 +230,7 @@ function selfTest() {
   Logger.log('今のアカウントは東セミのアカウントと判定：' + isStaff_());
   Logger.log('ログインの登録：' + spAccounts_().length + '件');
   var d = getStudents_();
+  Logger.log('志望校の基準点：' + JSON.stringify(getSchools_()));
   Logger.log('大分の生徒：' + d.students.length + '人（中高一貫校で外した生徒：' + d.excluded + '人）');
   if (d.noSheet.length) Logger.log('タブが未設定の学年：' + d.noSheet.join('、'));
   var rooms = {};
