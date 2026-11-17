@@ -577,10 +577,29 @@ button { cursor: pointer; }
   };
   const schools = () => st.schoolsBy[st.pref] || [];
   // 志望校の書き方（略し方も）から、「基準」タブの高校を探す
+  // 「宮崎西　普通」「宮崎商業 商業M」のように学科が付いていても探せる。
+  // 「基準」タブに「宮崎南 フロンティア」のような学科の行があれば、学科の頭がそろう行を先に使う（「フロ」でも当たる）。
   const findSchool = (w) => {
     w = String(w || '').trim(); if (!w) return null;
-    const name = (st.aliasBy[st.pref] || {})[w] || w;
-    return schools().find((x) => x.name === name) || null;
+    const al = st.aliasBy[st.pref] || {};
+    const ns = (x) => String(x).replace(/[\s　]+/g, '');
+    const list = schools();
+    const whole = al[w] || al[ns(w)];
+    if (whole) return list.find((x) => ns(x.name) === ns(whole)) || null;
+    const exact = list.find((x) => ns(x.name) === ns(w));
+    if (exact) return exact;
+    const parts = w.split(/[\s　]+/);
+    let base = al[parts[0]] || parts[0], course = parts.slice(1).join('');
+    // 空白がないとき（「宮崎南フロ」など）は、いちばん長くそろう高校名を学校名とみなす
+    if (!course) {
+      const bases = list.map((x) => ns(x.name.split(/[\s　]/)[0])).filter((b) => ns(w).startsWith(b) && ns(w) !== b).sort((a, b) => b.length - a.length);
+      if (!bases.length) return null;
+      base = bases[0]; course = ns(w).slice(base.length);
+    }
+    base = ns(base);
+    const same = list.filter((x) => ns(x.name.split(/[\s　]/)[0]) === base);
+    const withCourse = same.find((x) => { const c = ns(x.name).slice(base.length); return c && course && (c.startsWith(course) || course.startsWith(c)); });
+    return withCourse || same.find((x) => ns(x.name) === base) || null;
   };
   // 最初に入れておく目標：第一志望校（基準点がなければ第二志望校）
   const defGoal = (s) => {
