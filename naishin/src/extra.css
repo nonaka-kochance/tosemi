@@ -73,7 +73,9 @@
 .prefs { margin: 10px 0 0; }
 .prefs button[aria-pressed="true"] { background: #f08a00; border-color: #f08a00; }
 /* 点取くん（合格祈願の絵馬）は余白が多いので、過去最高チェックより少し大きく */
-.gate-head .tentori { width: clamp(104px, 33vw, 142px); height: clamp(104px, 33vw, 142px); margin: -10px -10px -8px 0; }
+/* 点取くんは大きくするが、場所を取る高さは過去最高チェックと同じにする（ログイン以下が下にずれないように） */
+.gate-head .tentori { --s: clamp(104px, 33vw, 142px); --o: clamp(88px, 28vw, 120px); width: var(--s); height: var(--s);
+  margin: calc((var(--o) - var(--s)) / 2 - 6px) -10px calc((var(--o) - var(--s)) / 2 - 6px) 0; }
 .grades.g3 { grid-template-columns: repeat(3, 1fr); }
 .parts.one { grid-template-columns: 1fr; }
 .pref-note { margin: 0 0 4px; font-size: 13px; color: var(--mute); background: var(--sky); border-radius: 12px; padding: 8px 12px; }
