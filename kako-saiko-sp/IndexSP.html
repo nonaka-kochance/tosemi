@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>過去最高チェック（スマホ用）</title>
+<style>
+:root { --navy:#1b2f6e; --blue:#2f5fd0; --sky:#e8f0fd; --red:#e0322b; --pink:#fdecec; --green:#12925a; --mint:#e4f6ec; --ink:#1d2433; --mute:#6b7487; --line:#dfe5f0; --bg:#eef2fa; --card:#fff; --amber:#b86a00; --cream:#fff4dc; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif; font-size: 16px; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+#banner { padding: 10px 16px; background: var(--sky); font-size: 14px; }
+#banner.err { background: var(--pink); color: var(--red); }
+.wrap { max-width: 520px; margin: 0 auto; padding: 0 16px 40px; }
+/* ログイン */
+#gate { max-width: 420px; margin: 0 auto; padding: 36px 20px; }
+.gate-card { background: var(--card); border-radius: 24px; padding: 28px 22px; box-shadow: 0 8px 24px rgba(27,47,110,.10); }
+.logo { font-weight: 900; font-size: 38px; line-height: 1.02; letter-spacing: -.5px; color: var(--navy); margin: 0; }
+.logo b { color: var(--blue); display: block; }
+.swoosh { display: block; width: 150px; height: 14px; margin: 6px 0 14px auto; }
+.gate-lead { font-weight: 700; font-size: 18px; margin: 0 0 4px; }
+.gate-sub { color: var(--mute); font-size: 14px; margin: 0 0 18px; }
+.gate-l { display: block; font-size: 14px; font-weight: 700; margin: 12px 0 0; }
+.gate-l input { display: block; width: 100%; margin-top: 6px; padding: 14px; font-size: 17px; border: 2px solid var(--line); border-radius: 14px; background: #fff; outline: none; }
+.gate-l input:focus { border-color: var(--blue); }
+#gate-ok { width: 100%; margin-top: 20px; padding: 16px; font-size: 18px; font-weight: 800; color: #fff; background: var(--blue); border: 0; border-radius: 16px; box-shadow: 0 4px 0 #2247a6; }
+#gate-ok:active { transform: translateY(2px); box-shadow: 0 2px 0 #2247a6; }
+#gate-ok:disabled { opacity: .6; }
+#gate-msg { color: var(--red); font-weight: 700; font-size: 14px; min-height: 21px; margin: 12px 0 0; }
+.gate-note { color: var(--mute); font-size: 13px; margin: 6px 0 0; }
+/* 上の部分 */
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 0 6px; }
+.top .logo { font-size: 26px; }
+.top .logo b { display: inline; }
+.room { font-size: 22px; font-weight: 800; margin: 2px 0 0; overflow-wrap: anywhere; }
+.room small { font-size: 14px; font-weight: 600; color: var(--mute); margin-left: 6px; }
+.help-btn { flex: none; min-width: 44px; height: 44px; padding: 0 12px; border-radius: 22px; border: 2px solid var(--line); background: #fff; font-weight: 800; font-size: 14px; color: var(--navy); }
+#room-sel { width: 100%; margin: 8px 0 0; padding: 12px; font-size: 16px; font-weight: 700; border: 2px solid var(--line); border-radius: 14px; background: #fff; }
+.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 16px; }
+.grades button { padding: 12px 0; font-weight: 800; font-size: 16px; border: 2px solid var(--line); border-radius: 14px; background: #fff; color: var(--mute); }
+.grades button[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+/* カード */
+.card { background: var(--card); border-radius: 22px; padding: 18px; margin: 0 0 14px; box-shadow: 0 4px 14px rgba(27,47,110,.07); }
+.card h2 { font-size: 17px; margin: 0 0 12px; font-weight: 800; }
+.card h2 span { font-size: 13px; font-weight: 600; color: var(--mute); margin-left: 6px; }
+.hero { display: flex; align-items: center; gap: 16px; }
+.ring { flex: none; width: 112px; height: 112px; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .v { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: 30px; color: var(--navy); line-height: 1; }
+.ring .v small { font-size: 12px; font-weight: 700; color: var(--mute); margin-top: 4px; }
+.pair { flex: 1; display: grid; gap: 8px; min-width: 0; }
+.tap { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 12px 14px; border: 0; border-radius: 16px; text-align: left; font-weight: 800; font-size: 16px; }
+.tap i { font-style: normal; font-size: 13px; font-weight: 700; display: block; opacity: .85; }
+.tap b { font-size: 24px; white-space: nowrap; }
+.tap b small { font-size: 14px; }
+.tap::after { content: "›"; font-size: 22px; font-weight: 700; opacity: .5; margin-left: 2px; }
+.tap > span { flex: 1; min-width: 0; }
+.tap.ng { background: var(--pink); color: var(--red); }
+.tap.ok { background: var(--mint); color: var(--green); }
+.tap.plain { background: var(--sky); color: var(--navy); }
+.tap.warn { background: var(--cream); color: var(--amber); }
+.tap:active { filter: brightness(.95); }
+.bar { height: 12px; border-radius: 6px; background: var(--pink); overflow: hidden; margin: 0 0 12px; }
+.bar div { height: 100%; background: var(--green); border-radius: 6px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.two .tap { flex-direction: column; align-items: flex-start; gap: 0; position: relative; padding-right: 26px; }
+.two .tap::after { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+.rate { font-weight: 900; font-size: 22px; color: var(--navy); float: right; margin-top: -4px; }
+.more { display: block; width: 100%; margin-top: 4px; padding: 14px; border: 0; border-radius: 16px; background: var(--blue); color: #fff; font-weight: 800; font-size: 16px; box-shadow: 0 4px 0 #2247a6; }
+.more:active { transform: translateY(2px); box-shadow: 0 2px 0 #2247a6; }
+.more.ghost { background: #fff; color: var(--navy); border: 2px solid var(--line); box-shadow: none; margin-top: 12px; }
+.empty { text-align: center; color: var(--mute); padding: 18px 0; font-weight: 700; }
+/* 生徒カード */
+.stu { border: 2px solid var(--line); border-radius: 18px; padding: 14px; margin: 0 0 10px; background: #fff; }
+.stu-h { display: flex; align-items: center; gap: 8px; }
+.stu-g { flex: none; font-size: 13px; font-weight: 800; color: #fff; background: var(--navy); border-radius: 8px; padding: 2px 8px; }
+.stu-n { flex: 1; min-width: 0; font-size: 18px; font-weight: 800; overflow-wrap: anywhere; }
+.stu-r { flex: none; font-size: 13px; color: var(--mute); }
+.stu-st { flex: none; font-size: 13px; font-weight: 800; border-radius: 10px; padding: 3px 9px; }
+.stu-st.ok { background: var(--mint); color: var(--green); }
+.stu-st.ng { background: var(--pink); color: var(--red); }
+.stu-st.none { background: #eef0f4; color: var(--mute); }
+.ato { margin: 10px 0 0; font-weight: 800; color: var(--red); font-size: 20px; line-height: 1.35; }
+.ato i { font-style: normal; font-size: 13px; color: var(--mute); font-weight: 700; display: block; }
+.ato span { display: inline-block; margin-right: 14px; white-space: nowrap; }
+.subj { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
+.sj { border-radius: 10px; padding: 6px 2px; text-align: center; background: #f3f5f9; color: #9aa2b1; min-width: 0; }
+.sj b { display: block; font-size: 14px; }
+.sj span { display: block; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sj.on.ok { background: var(--mint); color: var(--green); }
+.sj.on.ng { background: var(--pink); color: var(--red); }
+.sj.on.na { background: var(--sky); color: var(--navy); }
+/* 生徒一覧の画面 */
+.list-top { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 8px; }
+.back { display: inline-flex; align-items: center; gap: 4px; padding: 10px 16px 10px 12px; border: 2px solid var(--line); border-radius: 22px; background: #fff; font-weight: 800; color: var(--navy); }
+.list-title { font-size: 21px; font-weight: 900; margin: 12px 0 2px; }
+.list-title small { font-size: 15px; color: var(--mute); margin-left: 8px; font-weight: 700; }
+.list-note { font-size: 13px; color: var(--mute); margin: 0 0 8px; }
+#q { width: 100%; padding: 12px 14px; font-size: 16px; border: 2px solid var(--line); border-radius: 14px; background: #fff; outline: none; }
+#q:focus { border-color: var(--blue); }
+/* 使い方 */
+#help { position: fixed; inset: 0; z-index: 20; background: rgba(20,28,50,.45); display: flex; align-items: flex-end; }
+.sheet { width: 100%; max-width: 520px; margin: 0 auto; max-height: 86vh; overflow: auto; background: #fff; border-radius: 24px 24px 0 0; padding: 20px 20px 28px; }
+.sheet h2 { font-size: 19px; margin: 0 0 10px; }
+.sheet h3 { font-size: 15px; margin: 16px 0 4px; color: var(--navy); }
+.sheet p, .sheet li { font-size: 14px; margin: 4px 0; }
+.sheet ul { padding-left: 20px; margin: 4px 0; }
+.foot { text-align: center; margin: 22px 0 0; }
+.foot button { border: 0; background: none; color: var(--mute); font-size: 14px; text-decoration: underline; padding: 10px; }
+.gate-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin: 0 0 16px; }
+.tentori { flex: none; width: 120px; height: 120px; margin: -6px -6px -6px 0; object-fit: contain; }
+.gate-head .logo { white-space: nowrap; font-size: clamp(28px, 9.5vw, 38px); }
+.gate-head .tentori { width: clamp(88px, 28vw, 120px); height: clamp(88px, 28vw, 120px); }
+.stu-sub { margin: 6px 0 0; font-size: 14px; color: var(--mute); overflow-wrap: anywhere; }
+.two .tap i { font-size: clamp(11px, 3.4vw, 13px); white-space: nowrap; }
+.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.two .tap i { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div id="banner" hidden></div>
+<div id="gate" hidden>
+  <div class="gate-card">
+    <div class="gate-head"><p class="logo">過去最高<b>チェック</b></p><img class="tentori" alt="点取くん" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjlkNDIxZjc0LTZiMDItNGQ1ZS05ZGQ0LWQ3ZTdlOWQ5ZDkwNQAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNolvHrX0oH+Mq02SoX++uKuAAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6ODU1MWFjNzItNDlmYi00NTYzLWEwYjctZTJlYTRlNjYxYmI5bHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaBzO/a5Qe25yRxlA4irBC2sAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYIKjIIn7pyJpjorensrFsic/4+MFw5UlNnV4+XOpDBgGfpGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2hSPmdhm5xh7JkPoqI7vlWaAAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFggZVLwfYcUIl+0wMrMM34Q+8Tnwqo9MzzJXfLTGUcq5CJkbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYTo5ZDQyMWY3NC02YjAyLTRkNWUtOWRkNC1kN2U3ZTlkOWQ5MDUvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDo2YzMwYTMzNi05NjA2LTQ3NjctYWVmMC01NGQ2ZWZiZDBhYWJyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggqMgifunImmOit6eysWyJz/j4wXDlSU2dXj5c6kMGAZ+iY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIN9f+j0L69YW97wkrt0h5CMxKfrLLX7yG5SGOIhsZtCwomN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYINbGYiCdnYrSASKvwbNRb6romDWbVzuFVthbvVZzs1JOdGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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"></div>
+    <p class="gate-lead">ログイン</p>
+    <p class="gate-sub">自分の教室の生徒だけが表示されます。</p>
+    <label class="gate-l">ID<input id="gate-id" type="email" inputmode="email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></label>
+    <label class="gate-l">パスワード<input id="gate-input" type="password" autocomplete="off"></label>
+    <button id="gate-ok" type="button">ログイン</button>
+    <p id="gate-msg"></p>
+    <p class="gate-note">東セミの社員専用です。開くたびに入力が必要です。</p>
+  </div>
+</div>
+<div id="app" class="wrap" hidden>
+  <div id="home">
+    <header class="top">
+      <div>
+        <p class="logo">過去最高<b>チェック</b></p>
+        <p class="room" id="room-name"></p>
+      </div>
+      <button type="button" class="help-btn" id="help-btn">？ 見方</button>
+    </header>
+    <select id="room-sel" aria-label="教室" hidden></select>
+    <div class="grades" id="grades" role="group" aria-label="学年">
+      <button type="button" data-g="全学年">全学年</button>
+      <button type="button" data-g="中3">中3</button>
+      <button type="button" data-g="中2">中2</button>
+      <button type="button" data-g="中1">中1</button>
+    </div>
+    <section class="card">
+      <h2>受講科目で過去最高</h2>
+      <div class="hero">
+        <div class="ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="#fdecec" stroke-width="14"/><circle id="ring-arc" cx="60" cy="60" r="50" fill="none" stroke="#12925a" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 315"/></svg>
+          <div class="v"><span id="take-rate">－</span><small>達成率</small></div>
+        </div>
+        <div class="pair">
+          <button type="button" class="tap ng" data-list="take_ng"><span><i>🔥 まだの生徒</i></span><b id="n-take_ng">0<small>人</small></b></button>
+          <button type="button" class="tap ok" data-list="take_ok"><span><i>🎉 達成した生徒</i></span><b id="n-take_ok">0<small>人</small></b></button>
+        </div>
+      </div>
+    </section>
+    <section class="card" id="near-card">
+      <h2>あと少しで過去最高！<span>点数が近い順</span></h2>
+      <div id="near"></div>
+      <button type="button" class="more" data-list="take_ng" id="near-more">まだの生徒をすべて見る</button>
+    </section>
+    <section class="card">
+      <h2>全5科目で過去最高 <b class="rate" id="all-rate">－</b></h2>
+      <div class="bar"><div id="all-bar" style="width:0"></div></div>
+      <div class="two">
+        <button type="button" class="tap ng" data-list="all_ng"><i>まだの生徒</i><b id="n-all_ng">0<small>人</small></b></button>
+        <button type="button" class="tap ok" data-list="all_ok"><i>達成した生徒</i><b id="n-all_ok">0<small>人</small></b></button>
+      </div>
+    </section>
+    <section class="card">
+      <h2>そのほか</h2>
+      <div class="two">
+        <button type="button" class="tap plain" data-list="known"><i>判定した在籍生</i><b id="n-known">0<small>人</small></b></button>
+        <button type="button" class="tap plain" data-list="every"><i>全員</i><b id="n-every">0<small>人</small></b></button>
+        <button type="button" class="tap warn" data-list="unknown"><i>受講科目不明</i><b id="n-unknown">0<small>人</small></b></button>
+        <button type="button" class="tap warn" data-list="na"><i>判定不可</i><b id="n-na">0<small>人</small></b></button>
+        <button type="button" class="tap warn" data-list="missing"><i>登録漏れ</i><b id="n-missing">0<small>人</small></b></button>
+        <button type="button" class="tap warn" data-list="gone"><i>削除漏れ</i><b id="n-gone">0<small>人</small></b></button>
+      </div>
+    </section>
+    <p class="foot"><button type="button" id="logout">ログアウト</button></p>
+  </div>
+  <div id="list" hidden>
+    <div class="list-top">
+      <button type="button" class="back" id="back">‹ もどる</button>
+      <p class="list-title"><span id="list-title"></span><small id="list-count"></small></p>
+      <p class="list-note" id="list-note"></p>
+      <input id="q" type="search" placeholder="名前で検索" autocomplete="off">
+    </div>
+    <div id="cards"></div>
+  </div>
+  <div id="help" hidden>
+    <div class="sheet" role="dialog" aria-label="見方">
+      <h2>見方</h2>
+      <h3>数字を押すと、生徒が出ます</h3>
+      <p>「まだの生徒 ○人」などの色のついたボタンを押すと、その生徒の一覧が開きます。</p>
+      <h3>生徒カードの読み方</h3>
+      <ul>
+        <li><b>あと ○点</b>：その科目で過去最高になるまでの点数です。</li>
+        <li><b>96→92</b>：左が基準点（前の学年の最高点）、右が今年度の最高点です。</li>
+        <li>緑は達成、赤はまだ、灰色は受講していない科目です。</li>
+      </ul>
+      <h3>判定のルール</h3>
+      <ul>
+        <li>今年度の最高点が基準点以上（同点もOK）なら達成です。</li>
+        <li>中1と年度の途中で入った生徒は、今年度最初のテストが基準点です。</li>
+        <li>「受講科目で過去最高」は、受講している科目がすべて達成のときです。</li>
+        <li>中高一貫校の生徒は対象外です。</li>
+        <li>受講科目不明は、授業の記録に国・社・数・理・英がない生徒です。</li>
+        <li>判定不可は、比べる点数がまだない生徒です。</li>
+        <li>成績表への登録漏れは、在籍になっているのに★◯年度卒業生・テスト成績に名前がない生徒です。</li>
+        <li>成績表での削除漏れは、★◯年度卒業生・テスト成績に名前があるのに、在籍になっていない生徒です（退会の可能性）。</li>
+      </ul>
+      <button type="button" class="more ghost" id="help-close">とじる</button>
+    </div>
+  </div>
+</div>
+<script>
+/* ===== Apps Script 用の小さな実行基盤（dash）：データ取得・再描画・フィルタ状態 ===== */
+window.dash = (() => {
+  const SRC = ['g3_tests', 'g2_tests', 'g1_tests', 'class_lessons', 'kobetsu_lessons', 'roster'];
+  const loaders = {}, calcs = {}, draws = {}, listeners = [], cache = {};
+  let raw = null, state = 'loading', errMsg = '';
+  const params = {};
+  function data(id) {
+    if (state !== 'ok') return { status: state, data: [], columns: [], message: errMsg };
+    if (cache[id]) return cache[id];
+    let r;
+    try {
+      if (SRC.includes(id)) {
+        const o = loaders[id].fn({ answer: { values: raw[id] } });
+        r = { status: 'ok', data: Array.isArray(o) ? o : o.rows };
+      } else if (calcs[id]) {
+        const c = calcs[id];
+        const ins = c.inputs.map((i) => { const d = data(i); if (d.status !== 'ok') throw new Error(i + ': ' + (d.message || d.status)); return d.data; });
+        r = { status: 'ok', data: c.fn(...ins) };
+      } else r = { status: 'missing', data: [] };
+    } catch (e) { r = { status: 'error', data: [], message: String((e && e.message) || e) }; console.error(id, e); }
+    return (cache[id] = r);
+  }
+  function runDraw(name) {
+    document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => { try { draws[name](el); } catch (e) { console.error(name, e); } });
+  }
+  function run() {
+    listeners.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+    Object.keys(draws).forEach(runDraw);
+  }
+  let timer = null;
+  const later = () => { clearTimeout(timer); timer = setTimeout(run, 60); };
+  
+  return {
+    loader: (id, o) => { loaders[id] = o; },
+    calc: (id, o) => { calcs[id] = o; },
+    data,
+    onData: (fn) => { listeners.push(fn); },
+    draw: (name, fn) => { if (fn) draws[name] = fn; else if (draws[name]) runDraw(name); },
+    params: () => Object.assign({}, params),
+    setParams: (o) => { Object.keys(o).forEach((k) => { if (o[k] == null) delete params[k]; else params[k] = o[k]; }); run(); },
+    resetParams: () => { Object.keys(params).forEach((k) => delete params[k]); run(); },
+    setLink: () => {},
+    refresh: () => {},
+    colors: ['#2f6fed', '#e07b39', '#2a9d8f', '#9b5de5', '#d6a100', '#6c757d', '#c2185b', '#00838f'],
+    _set: (r) => { raw = r; state = 'ok'; Object.keys(cache).forEach((k) => delete cache[k]); },
+    _fail: (m) => { state = 'error'; errMsg = m; },
+    _run: run,
+  };
+})();
+</script>
+<script>
+dash.loader('g3_tests', {
+  description: 'シートの値を「生徒×テスト」の行に並べ替え。1学期のテストから新しい学年として数えます。',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || !Array.isArray(a.values)) throw new Error('シートの値が読めませんでした: ' + Object.keys(a || {}).join(', '));
+    const v = a.values;
+    const labels = v[0] || [], head = v[1] || [];
+    const subj = { '国': '国', '社': '社', '数': '数', '理': '理', '英': '英' };
+    const blocks = [];
+    let year = -1;
+    for (let c = 4; c < head.length; c++) {
+      if (head[c] === '順位') {
+        const label = String(labels[c] || '').trim();
+        if (label.startsWith('1学期') || year < 0) year++;
+        const cols = {};
+        for (let k = c + 1; k < c + 7 && k < head.length; k++) {
+          const s = subj[String(head[k] || '').trim().charAt(0)];
+          if (s) cols[s] = k;
+        }
+        blocks.push({ no: blocks.length + 1, year: year + 1, label, cols });
+      }
+    }
+    const rows = [];
+    for (let r = 2; r < v.length; r++) {
+      const row = v[r] || [];
+      const name = String(row[1] || '').trim();
+      if (!name) continue;
+      let has = false;
+      for (const b of blocks) {
+        const out = { 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 回: b.no, 学年次: b.year, テスト: b.label };
+        let any = false;
+        for (const s of ['国', '社', '数', '理', '英']) {
+          const t = b.cols[s] == null ? '' : String(row[b.cols[s]] ?? '').trim();
+          const n = t === '' ? null : Number(t);
+          out[s] = Number.isFinite(n) ? n : null;
+          if (out[s] != null) any = true;
+        }
+        if (any) { rows.push(out); has = true; }
+      }
+      // 点数がまだ1つもない生徒も、タブに登録されていることが分かるよう1行残す（判定には使わない。登録漏れチェック用）
+      if (!has) rows.push({ 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 登録のみ: true });
+    }
+    return rows;
+  },
+});
+dash.loader('g2_tests', {
+  description: 'シートの値を「生徒×テスト」の行に並べ替え。1学期のテストから新しい学年として数えます。',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || !Array.isArray(a.values)) throw new Error('シートの値が読めませんでした: ' + Object.keys(a || {}).join(', '));
+    const v = a.values;
+    const labels = v[0] || [], head = v[1] || [];
+    const subj = { '国': '国', '社': '社', '数': '数', '理': '理', '英': '英' };
+    const blocks = [];
+    let year = -1;
+    for (let c = 4; c < head.length; c++) {
+      if (head[c] === '順位') {
+        const label = String(labels[c] || '').trim();
+        if (label.startsWith('1学期') || year < 0) year++;
+        const cols = {};
+        for (let k = c + 1; k < c + 7 && k < head.length; k++) {
+          const s = subj[String(head[k] || '').trim().charAt(0)];
+          if (s) cols[s] = k;
+        }
+        blocks.push({ no: blocks.length + 1, year: year + 1, label, cols });
+      }
+    }
+    const rows = [];
+    for (let r = 2; r < v.length; r++) {
+      const row = v[r] || [];
+      const name = String(row[1] || '').trim();
+      if (!name) continue;
+      let has = false;
+      for (const b of blocks) {
+        const out = { 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 回: b.no, 学年次: b.year, テスト: b.label };
+        let any = false;
+        for (const s of ['国', '社', '数', '理', '英']) {
+          const t = b.cols[s] == null ? '' : String(row[b.cols[s]] ?? '').trim();
+          const n = t === '' ? null : Number(t);
+          out[s] = Number.isFinite(n) ? n : null;
+          if (out[s] != null) any = true;
+        }
+        if (any) { rows.push(out); has = true; }
+      }
+      // 点数がまだ1つもない生徒も、タブに登録されていることが分かるよう1行残す（判定には使わない。登録漏れチェック用）
+      if (!has) rows.push({ 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 登録のみ: true });
+    }
+    return rows;
+  },
+});
+dash.loader('g1_tests', {
+  description: 'シートの値を「生徒×テスト」の行に並べ替え。1学期のテストから新しい学年として数えます。',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || !Array.isArray(a.values)) throw new Error('シートの値が読めませんでした: ' + Object.keys(a || {}).join(', '));
+    const v = a.values;
+    const labels = v[0] || [], head = v[1] || [];
+    const subj = { '国': '国', '社': '社', '数': '数', '理': '理', '英': '英' };
+    const blocks = [];
+    let year = -1;
+    for (let c = 4; c < head.length; c++) {
+      if (head[c] === '順位') {
+        const label = String(labels[c] || '').trim();
+        if (label.startsWith('1学期') || year < 0) year++;
+        const cols = {};
+        for (let k = c + 1; k < c + 7 && k < head.length; k++) {
+          const s = subj[String(head[k] || '').trim().charAt(0)];
+          if (s) cols[s] = k;
+        }
+        blocks.push({ no: blocks.length + 1, year: year + 1, label, cols });
+      }
+    }
+    const rows = [];
+    for (let r = 2; r < v.length; r++) {
+      const row = v[r] || [];
+      const name = String(row[1] || '').trim();
+      if (!name) continue;
+      let has = false;
+      for (const b of blocks) {
+        const out = { 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 回: b.no, 学年次: b.year, テスト: b.label };
+        let any = false;
+        for (const s of ['国', '社', '数', '理', '英']) {
+          const t = b.cols[s] == null ? '' : String(row[b.cols[s]] ?? '').trim();
+          const n = t === '' ? null : Number(t);
+          out[s] = Number.isFinite(n) ? n : null;
+          if (out[s] != null) any = true;
+        }
+        if (any) { rows.push(out); has = true; }
+      }
+      // 点数がまだ1つもない生徒も、タブに登録されていることが分かるよう1行残す（判定には使わない。登録漏れチェック用）
+      if (!has) rows.push({ 行: r + 1, 生徒ID: String(row[0] || '').trim(), 名前: name, 教室: String(row[2] || '').trim(), 中学校: String(row[3] || '').trim(), 登録のみ: true });
+    }
+    return rows;
+  },
+});
+// 「クラス」「個別」タブ（ICCの授業記録）。見出しで列を探し、授業ごとの行に（校舎・生徒ID・学年・科目だけ使う）
+const lessonLoader = (tab) => ({
+  description: '「' + tab + '」タブ（ICCの授業記録）の見出しで列を探し、授業ごとの行に（校舎・生徒ID・学年・科目だけ使う）。',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    if (!a || !Array.isArray(a.values)) throw new Error('シートの値が読めませんでした: ' + Object.keys(a || {}).join(', '));
+    const v = a.values;
+    const head = (v[0] || []).map((h) => String(h).trim());
+    const ix = (n) => head.indexOf(n);
+    const iS = ix('校舎'), iId = ix('生徒ID'), iG = ix('学年'), iK = ix('科目');
+    if ([iS, iId, iG, iK].some((x) => x < 0)) throw new Error('「' + tab + '」タブに 校舎・生徒ID・学年・科目 の見出しが見つかりません');
+    return v.slice(1).filter((r) => r && String(r[iId] ?? '').trim()).map((r) => ({
+      生徒ID: String(r[iId] ?? '').trim(), 学年: String(r[iG] ?? '').trim(), 校舎: String(r[iS] ?? '').trim(), 科目: String(r[iK] ?? '').trim(),
+    }));
+  },
+});
+dash.loader('class_lessons', lessonLoader('クラス'));
+dash.loader('kobetsu_lessons', lessonLoader('個別'));
+// 「生徒の名簿」タブ：見出し「生徒ID」ごとのかたまり（中3・中2・中1）を読み、生徒ごとの行にする（登録漏れチェック用・試行）
+dash.loader('roster', {
+  description: '「生徒の名簿」タブの見出しで列を探し、生徒ごとの行に（生徒ID・校舎・状態・現学年・生徒名・学校名）。',
+  fn: ({ answer }) => {
+    const a = typeof answer === 'string' ? JSON.parse(answer) : answer;
+    const v = a && Array.isArray(a.values) ? a.values : [];
+    const hi = v.findIndex((r) => (r || []).some((c) => String(c).trim() === '生徒ID'));
+    if (hi < 0) return [];
+    const head = v[hi].map((h) => String(h).trim());
+    const starts = head.map((h, i) => (h === '生徒ID' ? i : -1)).filter((i) => i >= 0);
+    const rows = [];
+    starts.forEach((s, bi) => {
+      const end = bi + 1 < starts.length ? starts[bi + 1] : head.length;
+      const col = (n) => { const i = head.indexOf(n, s); return i >= 0 && i < end ? i : -1; };
+      const c = { 校舎: col('校舎'), 状態: col('状態'), 学年: col('現学年'), 名前: col('生徒名'), 中学校: col('学校名') };
+      for (let r = hi + 1; r < v.length; r++) {
+        const row = v[r] || [];
+        const id = String(row[s] ?? '').trim();
+        if (!id) continue;
+        const g = (k) => (c[k] < 0 ? '' : String(row[c[k]] ?? '').trim());
+        rows.push({ 生徒ID: id, 校舎: g('校舎'), 状態: g('状態'), 学年: g('学年'), 名前: g('名前'), 中学校: g('中学校') });
+      }
+    });
+    return rows;
+  },
+});
+dash.calc('missing', {
+  inputs: ['roster', 'g3_tests', 'g2_tests', 'g1_tests'],
+  title: '成績表への登録漏れ',
+  description: '「生徒の名簿」タブの在塾生（中高一貫校を除く）のうち、同じ学年の定期テストのタブに生徒IDが見つからない生徒。',
+  fn: (roster, g3_tests, g2_tests, g1_tests) => {
+    const gradeOf = (g) => (String(g).match(/中[１1]/) ? '中1' : String(g).match(/中[２2]/) ? '中2' : String(g).match(/中[３3]/) ? '中3' : '');
+    const IKKAN = ['大分豊府', '大分岩田', '大分向陽', '大分大分', '宮崎日本大学', '宮崎宮崎学園', '宮崎宮崎西附属', '宮崎宮崎第一', '別府明豊', '宮崎日向学院',
+      '大分豊府中', '大分岩田中', '大分向陽中', '大分中', '宮崎日本大学中', '宮崎学園中', '宮崎西高附属中', '宮崎第一中', '明豊中', '日向学院中'];
+    const ids = { 中3: new Set(g3_tests.map((t) => t.生徒ID)), 中2: new Set(g2_tests.map((t) => t.生徒ID)), 中1: new Set(g1_tests.map((t) => t.生徒ID)) };
+    const shortRoom = (s) => String(s || '').replace(/＋/g, '+').replace(/\s/g, '').replace(/Passion(\+?)$/, 'P$1').replace(/Spirits$/, 'S');
+    const order = { 中3: 0, 中2: 1, 中1: 2 };
+    // 名簿でPとSの区別がない校舎名は、一覧では次のように表示する（11/11 野中さん指定）
+    const ROSTER_ROOM = { 滝尾教室: '滝尾SP', 明野Spirits: '明野アクロスSP', わさだDesaki: 'わさだDesakiSP' };
+    const out = [];
+    for (const r of roster) {
+      const gr = gradeOf(r.学年);
+      if (!gr) continue;
+      if (r.状態 && r.状態 !== '在塾') continue;
+      if (String(r.中学校 || '').split('/').some((x) => IKKAN.includes(x.trim()))) continue;
+      if (ids[gr].has(r.生徒ID)) continue;
+      const other = ['中3', '中2', '中1'].find((g) => g !== gr && ids[g].has(r.生徒ID));
+      out.push({ key: gr + '-' + r.生徒ID, 学年: gr, 校舎: shortRoom(ROSTER_ROOM[String(r.校舎 || '').trim()] || r.校舎), 生徒ID: r.生徒ID, 名前: r.名前, 中学校: r.中学校, 備考: other ? other + 'のタブに登録あり' : '' });
+    }
+    return out.sort((a, b) => order[a.学年] - order[b.学年] || a.校舎.localeCompare(b.校舎, 'ja') || a.生徒ID.localeCompare(b.生徒ID, 'ja', { numeric: true }));
+  },
+});
+dash.calc('gone', {
+  inputs: ['roster', 'g3_tests', 'g2_tests', 'g1_tests'],
+  title: '名簿にいない生徒',
+  description: '定期テストのタブに生徒IDがあるのに、「生徒の名簿」タブにいない生徒（退会の可能性）。',
+  fn: (roster, g3_tests, g2_tests, g1_tests) => {
+    if (!roster.length) return [];
+    const inRoster = new Set(roster.map((r) => r.生徒ID));
+    const shortRoom = (s) => String(s || '').replace(/＋/g, '+').replace(/\s/g, '').replace(/Passion(\+?)$/, 'P$1').replace(/Spirits$/, 'S');
+    const order = { 中3: 0, 中2: 1, 中1: 2 };
+    const m = new Map();
+    for (const [gr, tests] of [['中3', g3_tests], ['中2', g2_tests], ['中1', g1_tests]]) {
+      for (const t of tests) {
+        const id = String(t.生徒ID ?? '').trim();
+        if (!id || inRoster.has(id)) continue;
+        const k = gr + '-' + id;
+        if (!m.has(k)) m.set(k, { key: 'gone-' + k, 学年: gr, 校舎s: [], 生徒ID: id, 名前: t.名前, 中学校: t.中学校 });
+        const room = shortRoom(t.教室);
+        if (room && !m.get(k).校舎s.includes(room)) m.get(k).校舎s.push(room);
+      }
+    }
+    return [...m.values()].map((r) => ({ key: r.key, 学年: r.学年, 校舎: r.校舎s.join('・'), 生徒ID: r.生徒ID, 名前: r.名前, 中学校: r.中学校 }))
+      .sort((a, b) => order[a.学年] - order[b.学年] || a.校舎.localeCompare(b.校舎, 'ja') || a.生徒ID.localeCompare(b.生徒ID, 'ja', { numeric: true }));
+  },
+});
+dash.calc('courses', {
+  inputs: ['class_lessons', 'kobetsu_lessons'],
+  title: '受講科目（クラス・個別）',
+  description: '「クラス」「個別」タブの授業を、生徒ID・学年・校舎ごとにまとめ、授業がある科目（国・社・数・理・英。英語演習・数学演習も含む）を受講科目とする。',
+  fn: (class_lessons, kobetsu_lessons) => {
+    const groups = new Map();
+    for (const [kind, rows] of [['クラス', class_lessons], ['個別', kobetsu_lessons]]) {
+      for (const r of rows) {
+        const k = r.生徒ID + '|' + r.学年 + '|' + r.校舎;
+        if (!groups.has(k)) groups.set(k, { 生徒ID: r.生徒ID, 姓: '', 名: '', 学年: r.学年, 校舎: r.校舎, 科目: new Set(), 区分: new Set() });
+        const g = groups.get(k);
+        g.科目.add(r.科目); g.区分.add(kind);
+      }
+    }
+    return [...groups.values()].map((g) => ({ 生徒ID: g.生徒ID, 姓: '', 名: '', 学年: g.学年, 校舎: g.校舎, 最新受講状況: [...g.科目].join(' '), 区分: [...g.区分].join('・') }));
+  },
+});
+dash.calc('judge', {
+  inputs: ['g3_tests', 'g2_tests', 'g1_tests', 'courses'],
+  title: '生徒ごとの過去最高判定',
+  description: '前の学年の科目別最高点（記録がない中1・途中入塾は今年度最初の点数、残り1回なら80点ラインも可）を基準に、今年度の最高点と比べ、受講科目・全5科目について達成か判定（基準点なし／80／90の3通り）。',
+  fn: (g3_tests, g2_tests, g1_tests, courses) => {
+    const SUBJ = ['国', '社', '数', '理', '英'];
+    const MODES = [['なし', null], ['80', 80], ['90', 90]];
+    const norm = (s) => String(s || '').replace(/[\s　]/g, '');
+    const gradeOf = (g) => (String(g).match(/中[１1]/) ? '中1' : String(g).match(/中[２2]/) ? '中2' : String(g).match(/中[３3]/) ? '中3' : '');
+    const byId = new Map(), byName = new Map();
+    for (const c of courses) {
+      const gr = gradeOf(c.学年);
+      if (!gr) continue;
+      const item = { ...c, gr, nm: norm(c.姓 + c.名) };
+      if (c.生徒ID) { if (!byId.has(c.生徒ID)) byId.set(c.生徒ID, []); byId.get(c.生徒ID).push(item); }
+      const k = gr + '|' + item.nm;
+      if (!byName.has(k)) byName.set(k, []); byName.get(k).push(item);
+    }
+    const subjOf = (txt) => {
+      const map = { 国語: '国', 社会: '社', 数学: '数', 算数: '数', 理科: '理', 英語: '英' };
+      const set = new Set();
+      for (const m of String(txt).matchAll(/国語|社会|数学|算数|理科|英語/g)) set.add(map[m[0]]);
+      return SUBJ.filter((s) => set.has(s));
+    };
+    const out = [];
+    for (const [grade, tests0] of [['中3', g3_tests], ['中2', g2_tests], ['中1', g1_tests]]) {
+      const tests = tests0.filter((t) => !t.登録のみ);
+      const lastYear = Math.max(...tests.map((t) => t.学年次));
+      // 各テストが年度の何回目か（1学期期末=1 … 学年末=4）
+      const TESTS_PER_YEAR = 4;
+      const posOf = new Map();
+      for (const y of new Set(tests.map((t) => t.学年次))) {
+        [...new Set(tests.filter((t) => t.学年次 === y).map((t) => t.回))].sort((a, b) => a - b).forEach((no, i) => posOf.set(no, i + 1));
+      }
+      const students = new Map();
+      for (const t of tests) {
+        if (!students.has(t.行)) students.set(t.行, []);
+        students.get(t.行).push(t);
+      }
+      for (const [row, ts] of students) {
+        const s0 = ts[0];
+        // 中高一貫校の生徒は過去最高チェックの対象外（学校名の「/」区切りのどれかが一致したら外す）
+        const IKKAN = ['大分豊府', '大分岩田', '大分向陽', '大分大分', '宮崎日本大学', '宮崎宮崎学園', '宮崎宮崎西附属', '宮崎宮崎第一', '別府明豊', '宮崎日向学院',
+          '大分豊府中', '大分岩田中', '大分向陽中', '大分中', '宮崎日本大学中', '宮崎学園中', '宮崎西高附属中', '宮崎第一中', '明豊中', '日向学院中'];
+        if (String(s0.中学校 || '').split('/').some((x) => IKKAN.includes(x.trim()))) continue;
+        const nm = norm(s0.名前);
+        let cands = (s0.生徒ID && byId.get(s0.生徒ID)) || [];
+        cands = cands.filter((c) => c.gr === grade);
+        // 同じ生徒が複数の教室に載っている（併用）ときは、すべての行の受講科目を合わせる
+        const merge = (rows) => (rows.length ? { ...rows[0], 最新受講状況: rows.map((c) => c.最新受講状況).join(' '), 校舎一覧: rows.map((c) => c.校舎), 行一覧: rows } : null);
+        // 「クラス」「個別」タブは生徒IDで照合する（氏名は使わない）
+        const hit = cands.length ? merge(cands) : null;
+        // わさだPassion+・福間南Passion+ の生徒は、受講状況に関わらず5科目すべてを受講科目とする
+        const ALL5_ROOMS = ['わさだPassion+', '福間南Passion+'];
+        const all5 = ALL5_ROOMS.includes(String(s0.教室 || '').replace(/＋/g, '+').trim());
+        // 教室はテストのタブが正。「クラス」「個別」タブの行のうち、テストのタブと同じ教室の行の科目だけを使う
+        // （違う校舎の行も、同じ校舎でもPassion／Spiritsが違う行も見ない。同じ教室の行がなければ受講科目不明）
+        // 書き方の違い（＋と+、P→Passion、S→Spirits）はそろえる。明野と明野アクロスは別の教室。
+        // 種別（Passion／Spirits）が書かれていない教室名は、その校舎のどちらの種別とも同じ教室とみなす
+        // 「クラス」「個別」タブには明野アクロスの校舎がなく、明野アクロスの生徒（Passion・Spirits）は「明野Spirits」の行に入っている。
+        // そのため、テストのタブで明野アクロスの生徒は「明野Spirits」の行で受講科目を判断する
+        const roomKey = (s) => {
+          const x = String(s || '').replace(/＋/g, '+').replace(/\s/g, '');
+          const m = x.match(/^(.*?)(Passion\+|Passion|Spirits|教室|P|S)?$/);
+          const typ = { P: 'Passion', S: 'Spirits', 教室: '' }[m[2]] ?? (m[2] || '');
+          return [m[1], typ];
+        };
+        const sameRoom = (a, b) => {
+          const [ca, ta] = roomKey(a); const [cb, tb] = roomKey(b);
+          if (cb === '明野アクロス') return ca === '明野' && ta === 'Spirits';
+          return ca === cb && (ta === tb || !ta || !tb);
+        };
+        const own = hit ? (hit.行一覧 || [hit]).filter((c) => sameRoom(c.校舎, s0.教室)) : [];
+        const ownStatus = own.map((c) => c.最新受講状況).join(' ');
+        const taken = all5 ? SUBJ.slice() : own.length ? subjOf(ownStatus) : [];
+        // 「クラス」「個別」タブに同じ教室の授業がない（国・社・数・理・英の授業がない）→ 受講科目不明
+        const known = all5 || (!!hit && taken.length > 0);
+        const d3sum = (arr) => arr.reduce((t, x) => t + x[1], 0);
+        // 画面の教室名は Passion→P、Spirits→S と短く表記する（例：わさだDesakiPassion → わさだDesakiP、わさだPassion+ → わさだP+）
+        const shortRoom = (s) => String(s || '').replace(/＋/g, '+').replace(/\s/g, '').replace(/Passion(\+?)$/, 'P$1').replace(/Spirits$/, 'S');
+        const rec = { key: grade + '-' + row, 学年: grade, 教室: shortRoom(s0.教室), 名前: s0.名前, 生徒ID: s0.生徒ID, 在籍: known ? '在籍' : '受講科目不明', 最新受講状況: ownStatus, 取得科目: known ? taken.join('') : '受講科目不明' };
+        const prevYear = lastYear - 1;
+        // cutoff：今年度の何回目のテストまでを見るか（推移用）。Infinity＝最新まで
+        const scoresAt = (s, cutoff) => {
+          const prev = grade === '中1' ? [] : ts.filter((t) => t.学年次 === prevYear && t[s] != null).map((t) => t[s]);
+          const seq = ts.filter((t) => t.学年次 === lastYear && t[s] != null && (posOf.get(t.回) || 0) <= cutoff).sort((a, b) => a.回 - b.回);
+          if (prev.length) {
+            // 前年度の記録あり：前年度の最高点が基準
+            return { b: Math.max(...prev), n: seq.length ? Math.max(...seq.map((t) => t[s])) : null, rescue: false };
+          }
+          // 前年度の記録なし（中1・途中入塾）：今年度最初のテストが基準、その後のテストで比べる
+          // 基準のテストが年度の3回目（2学期期末）以降＝残り1回なら、点数ライン（80点、90点設定時は90点）でも達成
+          return {
+            b: seq.length ? seq[0][s] : null,
+            n: seq.length > 1 ? Math.max(...seq.slice(1).map((t) => t[s])) : null,
+            rescue: seq.length ? (posOf.get(seq[0].回) || 0) >= TESTS_PER_YEAR - 1 : false,
+          };
+        };
+        const verdictOf = (sc, th) => {
+          if (sc.n == null) return null;
+          if (th != null && sc.n >= th) return true;
+          if (sc.rescue && sc.n >= (th ?? 80)) return true;
+          if (sc.b == null) return null;
+          return sc.n >= sc.b;
+        };
+        // 達成まであと何点（×の科目だけ）：基準点、または80点・90点ラインのうち近い方まで
+        const needOf = (sc, th) => {
+          const c = [sc.b - sc.n];
+          if (th != null) c.push(th - sc.n);
+          if (sc.rescue) c.push((th ?? 80) - sc.n);
+          return Math.max(1, Math.min(...c));
+        };
+        const judgeSet = (set, v) => {
+          const vs = set.map((s) => v[s]).filter((x) => x !== null);
+          if (!vs.length) return '判定不可';
+          return vs.every((x) => x) ? '達成' : '未達成';
+        };
+        const final = {};
+        for (const s of SUBJ) {
+          final[s] = scoresAt(s, Infinity);
+          rec[s + '基準'] = final[s].b;
+          rec[s + '今年'] = final[s].n;
+        }
+        for (const [mk, th] of MODES) {
+          const v = {};
+          for (const s of SUBJ) v[s] = verdictOf(final[s], th);
+          rec['取得判定_' + mk] = known ? judgeSet(taken, v) : '－';
+          rec['全科目判定_' + mk] = judgeSet(SUBJ, v);
+          const needs = (set) => set.filter((s) => v[s] === false).map((s) => [s, needOf(final[s], th)]);
+          const tk = known ? needs(taken) : [], al = needs(SUBJ);
+          // 全科目を持っておき、表では列に収まる分だけ表示して残りを「…」にする（合計点は全科目で計算）
+          const short = (arr) => arr.map(([s, n]) => s + n).join(' ');
+          rec['取得あと_' + mk] = short(tk);
+          rec['取得あと計_' + mk] = tk.length ? d3sum(tk) : null;
+          rec['全あと_' + mk] = short(al);
+          rec['全あと計_' + mk] = al.length ? d3sum(al) : null;
+          for (const s of SUBJ) {
+            const x = v[s], b = final[s].b, n = final[s].n;
+            rec[s + '判定_' + mk] = x === null ? '' : x ? '○' : '×';
+            rec[s + '_' + mk] = (b == null && n == null) ? '' : (b ?? '－') + '→' + (n ?? '－') + (x === null ? '' : x ? ' ○' : ' ×');
+          }
+        }
+        out.push(rec);
+      }
+    }
+    return out;
+  },
+});
+dash.calc('summary', {
+  inputs: ['judge'],
+  title: '学年・教室別の達成数',
+  description: '在籍生について、学年・教室・基準点ごとに達成・未達成の人数と達成率、受講科目ごとの更新率（更新した科目数÷受講科目数）を数えたもの。科目別達成率は受講に関わらず全員で数える。',
+  fn: (judge) => {
+    const out = [];
+    const groups = new Map();
+    for (const r of judge) {
+      for (const gr of [r.学年, '全学年']) for (const room of ['全教室', r.教室]) {
+        const k = gr + '|' + room;
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(r);
+      }
+    }
+    for (const [k, rs] of groups) {
+      const [学年, 教室] = k.split('|');
+      for (const 基準 of ['なし', '80', '90']) {
+        const ins = rs.filter((r) => r.在籍 === '在籍');
+      const cnt = (f, v) => ins.filter((r) => r[f + '_' + 基準] === v).length;
+        const a1 = cnt('取得判定', '達成'), m1 = cnt('取得判定', '未達成');
+        const a2 = cnt('全科目判定', '達成'), m2 = cnt('全科目判定', '未達成');
+        // 受講科目ごとの更新率：受講科目（○か×が付いた科目）の数を分母に、○の科目の数を数える
+        let su = 0, sn = 0;
+        for (const r of ins) for (const s of String(r.取得科目)) {
+          const v = r[s + '判定_' + 基準];
+          if (v === '○') { su++; sn++; } else if (v === '×') sn++;
+        }
+        // 科目別達成率：受講に関わらず、その科目に○か×が付いた生徒（受講科目不明の生徒も含む）
+        const bySubj = {};
+        for (const s of ['国', '社', '数', '理', '英']) {
+          const o = rs.filter((r) => r[s + '判定_' + 基準] === '○').length, x = rs.filter((r) => r[s + '判定_' + 基準] === '×').length;
+          bySubj[s + '達成'] = o; bySubj[s + '判定数'] = o + x; bySubj[s + '達成率'] = o + x ? o / (o + x) : null;
+        }
+        out.push({ key: 学年 + '|' + 教室 + '|' + 基準, 学年, 教室, 基準, 在籍生: ins.length, タブなし: rs.length - ins.length, 取得達成: a1, 取得未達成: m1, 取得達成率: a1 + m1 ? a1 / (a1 + m1) : null, 全科目達成: a2, 全科目未達成: m2, 全科目達成率: a2 + m2 ? a2 / (a2 + m2) : null, 取得判定不可: cnt('取得判定', '判定不可'), 全科目判定不可: cnt('全科目判定', '判定不可'), 科目更新: su, 科目判定数: sn, 科目更新率: sn ? su / sn : null, ...bySubj });
+      }
+    }
+    return out;
+  },
+});
+</script>
+<script>
+/* ===== スマホ用（教室長向け・簡易版）の画面 ===== */
+(() => {
+  const MODE = 'なし';
+  const SUBJ = ['国', '社', '数', '理', '英'];
+  const GORDER = { 中3: 0, 中2: 1, 中1: 2 };
+  const $ = (id) => document.getElementById(id);
+  const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+  const save = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const load = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const st = { grade: '全学年', room: '全教室', list: null, q: '', limit: 30, rooms: [], all: false };
+  const LISTS = {
+    take_ng: { title: '受講科目で まだの生徒', note: '過去最高まで近い順です。', f: (r) => r.在籍 === '在籍' && r['取得判定_' + MODE] === '未達成', near: '取得' },
+    take_ok: { title: '受講科目で 達成した生徒', f: (r) => r.在籍 === '在籍' && r['取得判定_' + MODE] === '達成' },
+    all_ng: { title: '全5科目で まだの生徒', note: '過去最高まで近い順です。', f: (r) => r.在籍 === '在籍' && r['全科目判定_' + MODE] === '未達成', near: '全', five: true },
+    all_ok: { title: '全5科目で 達成した生徒', f: (r) => r.在籍 === '在籍' && r['全科目判定_' + MODE] === '達成', five: true },
+    known: { title: '判定した在籍生', f: (r) => r.在籍 === '在籍' },
+    every: { title: '全員', f: () => true },
+    unknown: { title: '受講科目不明の生徒', note: '授業の記録に国・社・数・理・英がない生徒です。', f: (r) => r.在籍 !== '在籍', five: true },
+    na: { title: '判定不可の生徒', note: '比べる点数がまだない生徒です。', f: (r) => r.在籍 === '在籍' && r['取得判定_' + MODE] === '判定不可' },
+    missing: { title: '成績表への登録漏れ', note: '在籍になっているのに★◯年度卒業生・テスト成績に名前がない生徒です。', src: 'missing' },
+    gone: { title: '成績表での削除漏れ', note: '★◯年度卒業生・テスト成績に名前があるのに、在籍になっていない生徒です（退会の可能性）。', src: 'gone' },
+  };
+  // 同じ教室で指導している P と S は、1つの教室（◯◯SP）として見せる（かず家は別教室なのでそのまま）
+  const GROUP = { わさだDesakiP: 'わさだDesakiSP', わさだDesakiS: 'わさだDesakiSP', 滝尾P: '滝尾SP', 滝尾S: '滝尾SP', 明野アクロスP: '明野アクロスSP', 明野アクロスS: '明野アクロスSP' };
+  const grp = (r) => GROUP[r] || r;
+  const uniq = (a) => [...new Set(a)].sort((x, y) => x.localeCompare(y, 'ja'));
+  // 名簿の校舎（滝尾SP、かず家S など）が、選んだ教室に当たるか。SP は S と P の両方。Code.gs の roomHit_ と同じ
+  const roomHit = (shown, room) => {
+    const cut = (x) => { const m = String(x || '').match(/^(.*?)(SP|P\+|P|S|教室)?$/); return [m[1], m[2] === '教室' ? '' : (m[2] || '')]; };
+    const a = cut(shown), b = cut(room);
+    if (a[0] !== b[0]) return false;
+    if (!a[1] || !b[1] || a[1] === b[1]) return true;
+    return (a[1] === 'SP' && (b[1] === 'S' || b[1] === 'P')) || (b[1] === 'SP' && (a[1] === 'S' || a[1] === 'P'));
+  };
+  // 名簿とのちがい（登録漏れ・名簿にいない生徒）の行。学年と教室で絞る
+  const rosterRows = (key) => {
+    const d = dash.data(LISTS[key].src);
+    if (d.status !== 'ok') return [];
+    return d.data.filter((r) => r.名前 !== '（集計用）' && (st.grade === '全学年' || r.学年 === st.grade)
+      && (st.room === '全教室' || String(r.校舎 || '').split('・').some((x) => roomHit(x, st.room))));
+  };
+  const rosterCard = (r) => {
+    const c = mk('article', 'stu');
+    const h = mk('div', 'stu-h');
+    h.append(mk('span', 'stu-g', r.学年), mk('span', 'stu-n', r.名前), mk('span', 'stu-r', r.校舎));
+    c.append(h);
+    c.append(mk('p', 'stu-sub', [r.中学校, r.生徒ID ? '生徒ID ' + r.生徒ID : '', r.備考].filter(Boolean).join('　')));
+    return c;
+  };
+  const base = () => {
+    const d = dash.data('judge');
+    if (d.status !== 'ok') return [];
+    return d.data.filter((r) => (st.grade === '全学年' || r.学年 === st.grade) && (st.room === '全教室' || grp(r.教室) === st.room));
+  };
+  const rowsOf = (key) => {
+    const L = LISTS[key];
+    if (L.src) return rosterRows(key);
+    const rows = base().filter(L.f);
+    const by = (r) => (L.near ? r[L.near + 'あと計_' + MODE] ?? 9999 : 0);
+    return rows.sort((a, b) => by(a) - by(b) || GORDER[a.学年] - GORDER[b.学年] || String(a.名前).localeCompare(String(b.名前), 'ja'));
+  };
+  // 生徒1人のカード
+  const card = (r, five) => {
+    const c = mk('article', 'stu');
+    const h = mk('div', 'stu-h');
+    h.append(mk('span', 'stu-g', r.学年), mk('span', 'stu-n', r.名前));
+    if ((st.room === '全教室' && (st.all || st.rooms.length > 1)) || /SP$/.test(st.room)) h.append(mk('span', 'stu-r', r.教室));
+    const known = r.在籍 === '在籍';
+    const v = five || !known ? r['全科目判定_' + MODE] : r['取得判定_' + MODE];
+    if (!known && !five) h.append(mk('span', 'stu-st none', '受講科目不明'));
+    else h.append(mk('span', 'stu-st ' + (v === '達成' ? 'ok' : v === '未達成' ? 'ng' : 'none'), v === '達成' ? '🎉 達成' : v === '未達成' ? 'まだ' : '判定不可'));
+    c.append(h);
+    const ato = String((five || !known ? r['全あと_' + MODE] : r['取得あと_' + MODE]) || '');
+    if (ato && v === '未達成') {
+      const a = mk('p', 'ato');
+      a.append(mk('i', '', '過去最高まで あと'));
+      for (const x of ato.split(' ')) a.append(mk('span', '', x.charAt(0) + ' ' + x.slice(1) + '点'));
+      c.append(a);
+    }
+    const g = mk('div', 'subj');
+    for (const s of SUBJ) {
+      const txt = String(r[s + '_' + MODE] ?? '');
+      const m = txt.match(/^(.*?)(?: ([○×]))?$/);
+      const on = five || !known || String(r.取得科目).includes(s);
+      const cell = mk('div', 'sj' + (on ? ' on' : '') + (m[2] === '×' ? ' ng' : m[2] === '○' ? ' ok' : ' na'));
+      cell.append(mk('b', '', s + (m[2] ? ' ' + m[2] : '')), mk('span', '', m[1] || '－'));
+      g.append(cell);
+    }
+    c.append(g);
+    return c;
+  };
+  const num = (id, n) => { const e = $(id); e.replaceChildren(document.createTextNode(String(n)), mk('small', '', '人')); };
+  const pct = (a, b) => (a + b ? Math.round((a / (a + b)) * 100) + '%' : '－');
+  const drawHome = () => {
+    const n = {};
+    Object.keys(LISTS).forEach((k) => { n[k] = rowsOf(k).length; num('n-' + k, n[k]); });
+    $('take-rate').textContent = pct(n.take_ok, n.take_ng);
+    const p = n.take_ok + n.take_ng ? n.take_ok / (n.take_ok + n.take_ng) : 0;
+    $('ring-arc').setAttribute('stroke-dasharray', (p * 314.16).toFixed(1) + ' 315');
+    $('ring-arc').style.visibility = p > 0 ? 'visible' : 'hidden';
+    $('all-rate').textContent = pct(n.all_ok, n.all_ng);
+    $('all-bar').style.width = (n.all_ok + n.all_ng ? (n.all_ok / (n.all_ok + n.all_ng)) * 100 : 0) + '%';
+    const near = $('near'); near.replaceChildren();
+    const ng = rowsOf('take_ng');
+    if (!ng.length) near.append(mk('div', 'empty', n.take_ok ? '🎉 全員が達成しています！' : '該当する生徒はいません'));
+    ng.slice(0, 3).forEach((r) => near.append(card(r, false)));
+    $('near-more').hidden = ng.length <= 3;
+    $('near-more').textContent = 'まだの生徒をすべて見る（' + ng.length + '人）';
+    $('room-name').textContent = st.room === '全教室' ? (st.all ? '全教室' : st.rooms.join('・')) : st.room;
+    document.querySelectorAll('#grades button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.g === st.grade)));
+  };
+  const drawList = () => {
+    const L = LISTS[st.list];
+    const q = st.q.replace(/[\s　]/g, '');
+    const rows = rowsOf(st.list).filter((r) => !q || String(r.名前).replace(/[\s　]/g, '').includes(q));
+    $('list-title').textContent = L.title;
+    $('list-count').textContent = rows.length + '人';
+    $('list-note').textContent = (st.grade === '全学年' ? '' : st.grade + '　') + (L.note || '');
+    $('list-note').hidden = !$('list-note').textContent.trim();
+    const box = $('cards'); box.replaceChildren();
+    if (!rows.length) box.append(mk('div', 'empty', '該当する生徒はいません'));
+    rows.slice(0, st.limit).forEach((r) => box.append(L.src ? rosterCard(r) : card(r, !!L.five)));
+    if (rows.length > st.limit) {
+      const b = mk('button', 'more ghost', 'さらに表示（残り ' + (rows.length - st.limit) + '人）');
+      b.type = 'button'; b.onclick = () => { st.limit += 30; drawList(); };
+      box.append(b);
+    }
+  };
+  const show = () => {
+    $('home').hidden = !!st.list; $('list').hidden = !st.list;
+    if (st.list) drawList(); else drawHome();
+  };
+  const openList = (key) => { st.list = key; st.q = ''; st.limit = 30; $('q').value = ''; show(); window.scrollTo(0, 0); };
+  document.querySelectorAll('[data-list]').forEach((b) => b.addEventListener('click', () => openList(b.dataset.list)));
+  $('back').onclick = () => { st.list = null; show(); window.scrollTo(0, 0); };
+  $('q').addEventListener('input', (e) => { st.q = e.target.value.trim(); st.limit = 30; drawList(); });
+  document.querySelectorAll('#grades button').forEach((b) => b.addEventListener('click', () => { st.grade = b.dataset.g; save('tk-sp-grade', st.grade); show(); }));
+  $('room-sel').addEventListener('change', (e) => { st.room = e.target.value; show(); });
+  $('help-btn').onclick = () => { $('help').hidden = false; };
+  $('help-close').onclick = () => { $('help').hidden = true; };
+  $('help').addEventListener('click', (e) => { if (e.target === $('help')) $('help').hidden = true; });
+  // ログイン後に呼ぶ。info = { rooms: [見られる教室], all: 全教室を見られるか }
+  window.spStart = (info) => {
+    st.all = !!(info && info.all);
+    const d = dash.data('judge');
+    const found = d.status === 'ok' ? uniq(d.data.map((r) => grp(r.教室))) : [];
+    st.rooms = st.all ? found : uniq(((info && info.rooms) || []).map(grp));
+    const many = st.all || st.rooms.length > 1;
+    st.room = many ? '全教室' : (st.rooms[0] || '全教室');
+    const sel = $('room-sel'); sel.replaceChildren(); sel.hidden = !many;
+    if (many) [['全教室', st.all ? '全教室' : '担当の教室すべて'], ...st.rooms.map((r) => [r, r])].forEach(([v, t]) => { const o = mk('option', '', t); o.value = v; sel.append(o); });
+    const g = load('tk-sp-grade'); st.grade = ['全学年', '中3', '中2', '中1'].includes(g) ? g : '全学年';
+    st.list = null; $('help').hidden = true;
+    show();
+    if (d.status !== 'ok') { const b = $('banner'); b.hidden = false; b.className = 'err'; b.textContent = 'データを読み込めませんでした：' + (d.message || d.status); }
+  };
+  window.spStop = () => { st.list = null; $('cards').replaceChildren(); $('near').replaceChildren(); };
+})();
+</script>
+<script>
+/* ===== 起動（スマホ用）：開くたびにIDとパスワードを確認 → 自分の教室のデータだけ取得 → 描画 ===== */
+(() => {
+  const banner = document.getElementById('banner');
+  const gate = document.getElementById('gate');
+  const app = document.getElementById('app');
+  const idIn = document.getElementById('gate-id'), pwIn = document.getElementById('gate-input'), okBtn = document.getElementById('gate-ok');
+  const msg = document.getElementById('gate-msg');
+  const say = (t, err) => { banner.hidden = !t; banner.textContent = t || ''; banner.className = err ? 'err' : ''; };
+  const call = (name, ...args) => new Promise((ok, ng) => {
+    if (!(window.google && google.script && google.script.run)) return ng(new Error('Apps Script 上で開いてください'));
+    google.script.run.withSuccessHandler(ok).withFailureHandler((e) => ng(new Error(e && e.message ? e.message : String(e))))[name](...args);
+  });
+  const ask = (m) => { app.hidden = true; gate.hidden = false; say(''); msg.textContent = m || ''; okBtn.disabled = false; okBtn.textContent = 'ログイン'; };
+  const login = async () => {
+    const id = idIn.value.trim(), pw = pwIn.value;
+    if (!id || !pw) { msg.textContent = 'IDとパスワードを入力してください'; return; }
+    okBtn.disabled = true; okBtn.textContent = '確認しています…'; msg.textContent = '';
+    try {
+      // IDとパスワードは端末に保存しない（開くたびに入力）
+      const raw = await call('getRawSP', id, pw);
+      pwIn.value = '';
+      const info = raw._sp || { rooms: [], all: false };
+      delete raw._sp;
+      dash._set(raw);
+      last = Date.now();
+      gate.hidden = true; app.hidden = false;
+      say('');
+      window.spStart(info);
+      window.scrollTo(0, 0);
+    } catch (e) {
+      pwIn.value = '';
+      ask(String(e.message || e).replace(/^Error:\s*/, ''));
+    }
+  };
+  okBtn.onclick = login;
+  pwIn.onkeydown = (e) => { if (e.key === 'Enter') login(); };
+  idIn.onkeydown = (e) => { if (e.key === 'Enter') pwIn.focus(); };
+  const logout = (m) => { dash._fail('ログアウトしました'); window.spStop(); idIn.value = ''; pwIn.value = ''; ask(m || ''); window.scrollTo(0, 0); };
+  document.getElementById('logout').onclick = () => logout('');
+  // 10分間まったく操作がなければ、自動でログアウトする（スマホがスリープしていた時間も数える）
+  const IDLE_MS = 10 * 60 * 1000;
+  let last = Date.now();
+  const touch = () => { last = Date.now(); };
+  const check = () => { if (!app.hidden && Date.now() - last >= IDLE_MS) logout('10分間操作がなかったため、ログアウトしました'); };
+  ['pointerdown', 'touchstart', 'keydown', 'input', 'scroll', 'click'].forEach((ev) => window.addEventListener(ev, touch, { passive: true, capture: true }));
+  setInterval(check, 15000);
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('pageshow', check);
+  window.addEventListener('focus', check);
+  ask('');
+})();
+</script>
+</body>
+</html>
